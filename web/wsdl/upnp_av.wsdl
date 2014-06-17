@@ -1,0 +1,110 @@
+<?xml version="1.0"?>
+<!-- php-dlna v1.0
+ Copyright 2014 Torbjørn Tyridal (phpdlna@tyridal.no)
+
+ This file is part of php-dlna.
+
+   php-dlna is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License version 3
+   as published by the Free Software Foundation
+
+   php-dlna is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU Affero General Public License for more details.
+
+   You can get a copy The GNU Affero General Public license from
+   http://www.gnu.org/licenses/agpl-3.0.html
+-->
+
+<definitions name="Users"
+    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+    xmlns:upnp="urn:schemas-upnp-org:service:"
+    xmlns:cd="urn:schemas-upnp-org:service:ContentDirectory:1"
+	xmlns:cm="urn:schemas-upnp-org:service:ConnectionManager:1"
+    xmlns="http://schemas.xmlsoap.org/wsdl/"
+    xmlns:tns="urn:schemas-upnp-org:service:ContentDirectory:1.wsdl"
+    targetNamespace="urn:schemas-upnp-org:service:ContentDirectory:1.wsdl"
+>
+ 
+<documentation>
+</documentation>
+ 
+<types>
+    <schema targetNamespace="urn:schemas-upnp-org:service:ContentDirectory:1"
+        xmlns="http://www.w3.org/2001/XMLSchema">
+      <include schemaLocation="contentdirectory.xsd"/>
+    </schema>
+
+    <schema targetNamespace="urn:schemas-upnp-org:service:ConnectionManager:1"
+        xmlns="http://www.w3.org/2001/XMLSchema">
+      <include schemaLocation="connectionmanager.xsd"/>
+    </schema>
+</types>
+
+<message name="BrowseMsg">
+    <part name="body" element="cd:Browse"/>
+</message>
+<message name="BrowseResponseMsg">
+    <part name="body" element="cd:BrowseResponse"/>
+</message>
+<message name="SearchMsg">
+    <part name="body" element="cd:Search"/>
+</message>
+<message name="SearchResponseMsg">
+    <part name="body" element="cd:SearchResponse"/>
+</message>
+
+<message name="GetProtocolInfoMsg">
+    <part name="body" element="cm:GetProtocolInfo"/>
+</message>
+<message name="GetProtocolInfoResponseMsg">
+    <part name="body" element="cm:GetProtocolInfoResponse"/>
+</message>
+
+<portType name="ContentDirectoryPortType">
+    <documentation>ContentDirectory operations</documentation>
+    <operation name="Browse">
+        <documentation>Browse the dlna/upnp server</documentation>
+        <input message="tns:BrowseMsg"/>
+        <output message="tns:BrowseResponseMsg"/>
+    </operation>
+    <operation name="Search">
+        <documentation>Browse the dlna/upnp server</documentation>
+        <input message="tns:SearchMsg"/>
+        <output message="tns:SearchResponseMsg"/>
+    </operation>
+
+    <operation name="GetProtocolInfo">
+        <documentation>Browse the dlna/upnp server</documentation>
+        <input message="tns:GetProtocolInfoMsg"/>
+        <output message="tns:GetProtocolInfoResponseMsg"/>
+    </operation>
+</portType>
+ 
+<binding name="ContentDirectoryBinding" type="tns:ContentDirectoryPortType">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http" />
+    <operation name="Browse">
+        <soap:operation soapAction="urn:schemas-upnp-org:service:ContentDirectory:1#Browse"/>
+         <input><soap:body use="literal"/></input>
+         <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="Search">
+        <soap:operation soapAction="urn:schemas-upnp-org:service:ContentDirectory:1#Search"/>
+         <input><soap:body use="literal"/></input>
+         <output><soap:body use="literal"/></output>
+    </operation>
+
+    <operation name="GetProtocolInfo">
+        <soap:operation soapAction="urn:schemas-upnp-org:service:ConnectionManager:1#GetProtocolInfo"/>
+        <output><soap:body use="literal"/></output>
+    </operation>
+</binding> 
+
+<service name="DLNA/UPNP server">
+    <port name="ContentDirectoryPort" binding="tns:ContentDirectoryBinding">
+        <soap:address location="http://192.168.0.1/phpdlna/cdCtrl.php"/>
+    </port>
+</service>
+
+</definitions>

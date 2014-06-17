@@ -1,0 +1,34 @@
+<!-- php-dlna v1.0
+ Copyright 2014 Torbjørn Tyridal (phpdlna@tyridal.no)
+
+ This file is part of php-dlna.
+
+   php-dlna is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License version 3
+   as published by the Free Software Foundation
+
+   php-dlna is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU Affero General Public License for more details.
+
+   You can get a copy The GNU Affero General Public license from
+   http://www.gnu.org/licenses/agpl-3.0.html
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	xmlns:u="urn:schemas-upnp-org:service:ConnectionManager:1"
+	targetNamespace="urn:schemas-upnp-org:service:ConnectionManager:1">
+
+	<xs:element name="GetProtocolInfo">
+		<xs:complexType />
+	</xs:element>
+	<xs:element name="GetProtocolInfoResponse">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="Source" type="xs:string" minOccurs="1" maxOccurs="1" />
+				<xs:element name="Sink" type="xs:string" minOccurs="1" maxOccurs="1" />
+            </xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+</xs:schema>	

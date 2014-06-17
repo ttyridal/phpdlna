@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<root xmlns="urn:schemas-upnp-org:device-1-0" xmlns:dlna="urn:schemas-dlna-org:device-1-0">
+<specVersion>
+<major>1</major>
+<minor>0</minor>
+</specVersion>
+<device>
+<deviceType>urn:schemas-upnp-org:device:MediaServer:1</deviceType>
+<friendlyName>phpdlna</friendlyName>
+<manufacturer>ttyridal@github</manufacturer>
+<manufacturerURL>https://github.com/ttyridal/phpdlna</manufacturerURL>
+<modelDescription>phpdlna</modelDescription>
+<modelName>phpdlna</modelName>
+<modelNumber>1</modelNumber>
+<modelURL>http://127.0.0.1/modelURL</modelURL>
+<serialNumber>12345678</serialNumber>
+<UDN>uuid:17f4370c-dae1-11e3-841f-00e04c6a3575</UDN>
+<dlna:X_DLNADOC>DMS-1.50</dlna:X_DLNADOC>
+<serviceList>
+<service>
+<serviceType>urn:schemas-upnp-org:service:ContentDirectory:1</serviceType>
+<serviceId>urn:upnp-org:serviceId:ContentDirectory</serviceId>
+<controlURL>/phpdlna/cdCtrl.php</controlURL>
+<eventSubURL>/phpdlna/cdEvent.php</eventSubURL>
+<SCPDURL>/phpdlna/cdScpd.xml</SCPDURL>
+</service>
+<service>
+<serviceType>urn:schemas-upnp-org:service:ConnectionManager:1</serviceType>
+<serviceId>urn:upnp-org:serviceId:ConnectionManager</serviceId>
+<controlURL>/phpdlna/cmCtrl.php</controlURL>
+<eventSubURL>/phpdlna/cmEvent.php</eventSubURL>
+<SCPDURL>/phpdlna/cmScpd.xml</SCPDURL>
+</service>
+</serviceList>
+</device>
+<URLBase>http://192.168.0.1:80/</URLBase>
+</root>

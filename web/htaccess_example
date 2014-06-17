@@ -1,0 +1,8 @@
+<Files "rootDesc.xml">
+ForceType text/xml
+</Files>
+
+<Files "*.mkv">
+#ForceType video/mpeg
+ForceType video/x-matroska
+</Files>
