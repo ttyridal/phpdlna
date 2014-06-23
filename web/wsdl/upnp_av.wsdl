@@ -19,7 +19,6 @@
 
 <definitions name="Users"
     xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
-    xmlns:upnp="urn:schemas-upnp-org:service:"
     xmlns:cd="urn:schemas-upnp-org:service:ContentDirectory:1"
 	xmlns:cm="urn:schemas-upnp-org:service:ConnectionManager:1"
     xmlns="http://schemas.xmlsoap.org/wsdl/"
