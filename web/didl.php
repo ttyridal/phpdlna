@@ -55,10 +55,11 @@ class DIDLitem {
     function longDescription($value) { addNodeWithText($this->node, 'upnp:longDescription', $value); return $this; }
     function description($value) { addNodeWithText($this->node, 'dc:description', $value); return $this; }
     function language($value) { addNodeWithText($this->node, 'dc:language', $value); return $this; }
-    function resource($url, $protocolInfo='*:*:*:*', $optattr=array())
+    function resource($url, $optattr=array())
     {
+        $optattr = array_merge(array('protocolInfo'=>'*:*:*:*'), $optattr);
         $ndRes = $this->node->ownerDocument->createElement('res');
-        $ndRes->setAttribute('protocolInfo', $protocolInfo);
+        $ndRes->setAttribute('protocolInfo', $optattr['protocolInfo']);
 //         $ndRes->setAttribute('protocolInfo', 'http-get:*:audio/mpeg:*');
 //         $ndRes->setAttribute('protocolInfo', '*:*:video/x-matroska:*');
         //   http-get:*:video/x-matroska:DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=20000000000000000000000000000000
