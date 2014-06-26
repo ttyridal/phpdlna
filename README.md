@@ -30,9 +30,8 @@ web/rootDesc.xml:
  URL's assume that the /web folder is accessible at
  "URLBASE/phpdlna"
 
-web/cdCtrl.php:
-this is the main program. Please note that it currently needs hard coding
-of files to serve. There are two examples provided for audio/video. Needs work!
+web/config.php:
+ Define the folders to share. See config.php\_example
 
 ##Misc
 
