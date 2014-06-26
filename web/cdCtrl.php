@@ -25,6 +25,7 @@ http://www.upnp.org/specs/av/UPnP-av-ContentDirectory-v1-Service.pdf
 https://github.com/ronenmiz/TVersity/wiki/Content-Directory-Metadata
  */
 
+require_once("config.php");
 require_once("didl.php");
 
 function _debug($someText, $someVar = null) {
@@ -35,9 +36,40 @@ function _debug($someText, $someVar = null) {
     fclose($fh);
 }
 
-define('MEDIABASE','http://'.$_SERVER['HTTP_HOST'].'/media');
+class InvalidInputException extends Exception { }
 
 class ContentDirectory {
+    private function lookup_real_path($id) {
+        // hide realpath by mapping folders to numbers: 1.1.2 is second folder in the first folder
+        // under the first configured root..  prevent infoleak by listing non-shared folders.
+        $path_key = explode('.', $id);
+        $key = intval(array_shift($path_key));
+        if ($key > count(Config::$folders)) throw new InvalidInputException();
+        $path = Config::$folders[$key-1]['hostpath'];
+        $webpath=Config::$folders[$key-1]['webpath'];
+
+        _debug("mapping..");
+        foreach ($path_key as $key) {
+            $folderid=0;
+            $found=false;
+            foreach (new DirectoryIterator($path) as $fileInfo) {
+                if($fileInfo->isDot()) continue;
+                if(!$fileInfo->isDir()) continue;
+                $folderid++;
+
+                if ($folderid==$key) {
+                    $found=true;
+                    $path.=$fileInfo->getFilename().'/';
+                    $webpath.=$fileInfo->getFilename().'/';
+                    break;
+                }
+            }
+            if (!$found)
+                throw new InvalidInputException();
+        }
+        return array($path, $webpath);
+    }
+
     function Search($req) {
         //TODO: implement :)
         //TODO: Consider $req->StartingIndex and $req->RequestedCount
@@ -65,53 +97,88 @@ class ContentDirectory {
             $items = new DIDL(0);
         }
         _debug("Direct children of ".$req->ObjectID);
-        if ($req->ObjectID == '0') {
-            $items->addFolder("that folder", $req->ObjectID.'1')
-            ->icon(MEDIABASE.'/that_folder/folder.jpg')
-            ->creator('Creator')
-            ->genre('Genre')
-            ->artist('Artist')
-            ->author('Author')
-            ->album('Album')
-            ->date('2014-01-01')
-            ->actor('Actor')
-            ->director('Director')
-            ;
+
+        if ($req->ObjectID == '0') { //ROOT
+            $folderid=0;
+            foreach (Config::$folders as $folder) {
+                $items->addFolder($folder['webpath'], sprintf("%d", ++$folderid))
+                ->creator('Creator')
+                ->genre('Genre')
+                ->artist('Artist')
+                ->author('Author')
+                ->album('Album')
+                ->date('2014-01-01')
+                ->actor('Actor')
+                ->director('Director')
+//                 ->icon(MEDIABASE.'/that_folder/folder.jpg')();
+                ;
+            }
+        } else {
+            try {
+                list($path, $webpath) = $this->lookup_real_path($req->ObjectID);
+            } catch (InvalidInputException $e) {
+                return array('illegal');
+            }
+
+            _debug("listing: ".$path);
+            $folderid=0;
+            foreach (new DirectoryIterator($path) as $fileInfo) {
+                if ($fileInfo->isDot()) continue;
+                if ($fileInfo->isDir()) {
+                    $itm = $items->addFolder($fileInfo->getFilename(), sprintf('%s.%d', $req->ObjectID, ++$folderid));
+                    foreach (array('folder.png','folder.jpg','album.png','album.jpg') as $icon) {
+                        if (file_exists($fileInfo->getPathname().'/'.$icon)) {
+                            $itm->icon($webpath.$fileInfo->getFilename()."/".$icon);
+                            break;
+                        }
+                    }
+                } else {
+                    $fname = pathinfo($fileInfo->getPathname(),PATHINFO_FILENAME);
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $ct = finfo_file($finfo, $fileInfo->getPathname());
+                    finfo_close($finfo);
+                    _debug($ct." ".$fileInfo->getFilename());
+                    if (substr($ct, 0, 6) === 'video/') {
+                        $itm = $items->addVideo(str_replace(array('.','_'),' ', $fname));
+                    } else if (substr($ct, 0, 6) === 'audio/') {
+                        $itm = $items->addSong(str_replace(array('.','_'),' ', $fname));
+                    } else {
+                        continue; // ignore other types
+                    }
+                    $itm->resource($webpath.$fileInfo->getFilename(), array('filesize'=>$fileInfo->getSize()))
+                    //->creator('Creator')
+                    //->genre('Genre')
+                    //->artist('Artist')
+                    //->artist('PerformingArtist', 'Performer')
+                    //->artist('ComposerArtist', 'Composer')
+                    //->artist('AlbumArtist', 'AlbumArtist')
+                    //->author('Author')
+                    //->album('Album')
+                    //->date('2014-01-01')
+                    //->actor('Actor')
+                    //->director('Director')
+                    //->album('AlbumName')
+                    //->track('1')
+                    //->longDescription("the long description")
+                    //->description("short description")
+                    //->language("English")
+                    ;
+
+                    if (file_exists($path.$fname.'.png'))
+                        $itm->icon($webpath.$fname.'.png');
+                    else if (file_exists($path.$fname.'.jpg'))
+                        $itm->icon($webpath.$fname.'.jpg');
+                    else {
+                        foreach (array('folder.png','folder.jpg','album.png','album.jpg') as $icon) {
+                            if (file_exists($path.$icon)) {
+                                $itm->icon($webpath.$icon);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
-        $items->addSong('A song')
-            ->resource(MEDIABASE.'/music/a_song.mp3' /*, 'http-get:*:audio/mpeg:DLNA.ORG_PN=MP3;DLNA.ORG_OP=01;DLNA.ORG_CI=0'*/)
-            ->icon(MEDIABASE.'/music/a_song.jpg')
-            ->creator('Creator')
-            ->genre('Genre')
-            ->artist('Artist')
-            ->artist('PerformingArtist', 'Performer')
-            ->artist('ComposerArtist', 'Composer')
-            ->artist('AlbumArtist', 'AlbumArtist')
-            ->author('Author')
-            ->album('Album')
-            ->date('2014-01-01')
-            ->actor('Actor')
-            ->director('Director')
-            ->album('AlbumName')
-            ->track('1')
-            ;
-        $items->addVideo('A Video')
-            ->resource(MEDIABASE.'/video/a_video.mkv')
-            ->icon(MEDIABASE.'/video/a_video.jpg')
-            ->creator('Creator')
-            ->genre('Genre')
-            ->artist('Artist')
-            ->author('Author')
-            ->album('Album')
-            ->date('2014-01-01')
-            ->actor('Actor')
-            ->director('Director')
-            ->album('AlbumName')
-            ->track('1')
-            ->longDescription("the long description")
-            ->description("short description")
-            ->language("English")
-            ;
 
         return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$items->count, 'UpdateID'=>13);
     }

@@ -1,0 +1,10 @@
+<?php
+class Config {
+    static $folders;
+};
+
+Config::$folders = array(
+            array('hostpath'=>'/media/', 'webpath'=>'http://192.168.0.1/media/')
+        );
+
+?>
