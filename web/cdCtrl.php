@@ -51,21 +51,16 @@ class ContentDirectory {
         _debug("mapping..");
         foreach ($path_key as $key) {
             $folderid=0;
-            $found=false;
+            $folders=array();
             foreach (new DirectoryIterator($path) as $fileInfo) {
                 if($fileInfo->isDot()) continue;
                 if(!$fileInfo->isDir()) continue;
-                $folderid++;
-
-                if ($folderid==$key) {
-                    $found=true;
-                    $path.=$fileInfo->getFilename().'/';
-                    $webpath.=$fileInfo->getFilename().'/';
-                    break;
-                }
+                $folders[] = $fileInfo->getFilename();
             }
-            if (!$found)
-                throw new InvalidInputException();
+            sort($folders);
+            if ($key > count($folders)) throw new InvalidInputException();
+            $path.=$folders[$key-1].'/';
+            $webpath.=$folders[$key-1].'/';
         }
         return array($path, $webpath);
     }
@@ -121,31 +116,43 @@ class ContentDirectory {
             }
 
             _debug("listing: ".$path);
-            $folderid=0;
+            $folders=array();
+            $files=array();
             foreach (new DirectoryIterator($path) as $fileInfo) {
                 if ($fileInfo->isDot()) continue;
                 if ($fileInfo->isDir()) {
-                    $itm = $items->addFolder($fileInfo->getFilename(), sprintf('%s.%d', $req->ObjectID, ++$folderid));
-                    foreach (array('folder.png','folder.jpg','album.png','album.jpg') as $icon) {
-                        if (file_exists($fileInfo->getPathname().'/'.$icon)) {
-                            $itm->icon($webpath.$fileInfo->getFilename()."/".$icon);
-                            break;
-                        }
-                    }
+                    $folders[] = $fileInfo->getFilename();
                 } else {
-                    $fname = pathinfo($fileInfo->getPathname(),PATHINFO_FILENAME);
-                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                    $ct = finfo_file($finfo, $fileInfo->getPathname());
-                    finfo_close($finfo);
-                    _debug($ct." ".$fileInfo->getFilename());
-                    if (substr($ct, 0, 6) === 'video/') {
-                        $itm = $items->addVideo(str_replace(array('.','_'),' ', $fname));
-                    } else if (substr($ct, 0, 6) === 'audio/') {
-                        $itm = $items->addSong(str_replace(array('.','_'),' ', $fname));
-                    } else {
-                        continue; // ignore other types
+                    $files[] = $fileInfo->getFilename();
+                }
+            }
+            sort($files);
+            sort($folders);
+
+            $folderid=0;
+            foreach ($folders as $f) {
+                $itm = $items->addFolder($f, sprintf('%s.%d', $req->ObjectID, ++$folderid));
+                foreach (array('folder.png','folder.jpg','album.png','album.jpg') as $icon) {
+                    if (file_exists($path.$f.'/'.$icon)) {
+                        $itm->icon($webpath.$f."/".$icon);
+                        break;
                     }
-                    $itm->resource($webpath.$fileInfo->getFilename(), array('filesize'=>$fileInfo->getSize()))
+                }
+            }
+
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            foreach ($files as $f)
+            {
+                $ct = finfo_file($finfo, $path.$f);
+
+                $fname = pathinfo($f, PATHINFO_FILENAME);
+                if (substr($ct, 0, 6) === 'video/') {
+                    $itm = $items->addVideo(str_replace(array('.','_'),' ', $fname));
+                } else if (substr($ct, 0, 6) === 'audio/') {
+                    $itm = $items->addSong(str_replace(array('.','_'),' ', $fname));
+                } else
+                    continue;
+                $itm->resource($webpath.$f, array('filesize'=>filesize($path.$f)))
                     //->creator('Creator')
                     //->genre('Genre')
                     //->artist('Artist')
@@ -163,21 +170,20 @@ class ContentDirectory {
                     //->description("short description")
                     //->language("English")
                     ;
-
-                    if (file_exists($path.$fname.'.png'))
-                        $itm->icon($webpath.$fname.'.png');
-                    else if (file_exists($path.$fname.'.jpg'))
-                        $itm->icon($webpath.$fname.'.jpg');
-                    else {
-                        foreach (array('folder.png','folder.jpg','album.png','album.jpg') as $icon) {
-                            if (file_exists($path.$icon)) {
-                                $itm->icon($webpath.$icon);
-                                break;
-                            }
+                if (file_exists($path.$fname.'.png'))
+                    $itm->icon($webpath.$fname.'.png');
+                else if (file_exists($path.$fname.'.jpg'))
+                    $itm->icon($webpath.$fname.'.jpg');
+                else {
+                    foreach (array('folder.png','folder.jpg','album.png','album.jpg') as $icon) {
+                        if (file_exists($path.$icon)) {
+                            $itm->icon($webpath.$icon);
+                            break;
                         }
                     }
                 }
             }
+            finfo_close($finfo);
         }
 
         return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$items->count, 'UpdateID'=>13);
