@@ -211,5 +211,18 @@ class ContentDirectory {
 
 $srv = new SoapServer("wsdl/upnp_av.wsdl");
 $srv->setClass('ContentDirectory');
+
+ob_start();
 $srv->handle();
+$soapXml = ob_get_contents();
+ob_end_clean();
+
+// if someone knows a better way to convince SOAPServer to include the encodingStyle
+// attribute, I'll be glad to hear about it.
+// Required by the platinum upnp library (plex, xbmc others...)
+$soapXml = str_replace('<SOAP-ENV:Envelope', '<SOAP-ENV:Envelope SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"', $soapXml);
+$length = strlen($soapXml);
+header("Content-Length: ".$length);
+echo $soapXml;
+}
 ?>
