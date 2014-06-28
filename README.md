@@ -64,6 +64,7 @@ Some renderers (notably wdtv live) will not accept that the web server
 and udp-broadcast lives on different addresses (location has to point
 to the same ip as the notify / m-search reply is sent from)
 
-* UPnP Events
-are not implemented. I've not found a client that requires them. Files
-exists to avoid http-errors.
+* Server strings
+Are specified in http://upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.1.pdf to
+"MUST include 'UPnP/M.m'. On most servers we can't control this. wdtv and
+xbmc at least doesn't care
