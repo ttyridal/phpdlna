@@ -224,5 +224,4 @@ $soapXml = str_replace('<SOAP-ENV:Envelope', '<SOAP-ENV:Envelope SOAP-ENV:encodi
 $length = strlen($soapXml);
 header("Content-Length: ".$length);
 echo $soapXml;
-}
 ?>
