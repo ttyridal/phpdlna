@@ -46,6 +46,8 @@ const char upnp_broadcast_addr[]="239.255.255.250";
 // the current media) if we do not reannouce within this time.
 const unsigned cache_age = 60*60*12; //s == 12 hours
 
+bool log_verbose = false;
+bool is_daemon = false;
 
 class Formatter
 {
@@ -182,7 +184,8 @@ public:
 
 
 
-        std::cout << "notify about server\n";
+        if (log_verbose)
+            std::cout << "notify about services\n";
         std::string s = Formatter() << base << "NT: uuid:"<<device_uuid<<"\r\n"<<
                                                "USN: uuid:"<<device_uuid<<"\r\n"<<
                                                "NTS: ssdp:alive\r\n"<<
@@ -195,7 +198,8 @@ public:
                                                    "NTS: ssdp:alive\r\n"<<
                                                    "\r\n";
             sd.sendto(s,localSock);
-            std::cout << "  "<<*it <<"\n";
+            if (log_verbose)
+                std::cout << "  "<<*it <<"\n";
         }
     }
     void msearch_reply(sockaddr_in &src_addr) {
@@ -232,7 +236,8 @@ public:
         group.imr_multiaddr.s_addr = inet_addr(upnp_broadcast_addr);
         group.imr_interface.s_addr = Socket::localhost_in_addr();
         sd.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group));
-        std::cout << "Adding multicast group...OK.\n";
+        if (log_verbose)
+            std::cout << "Adding multicast group...OK.\n";
     }
     ~broadcast_socket() {
             group.imr_interface.s_addr = inet_addr("0.0.0.0");
@@ -250,14 +255,19 @@ public:
             unicast_socket::get().msearch_reply(src_addr);
 
         databuf[17]=0;
-        std::cout << inet_ntoa(src_addr.sin_addr) << ":" << src_addr.sin_port << " > " << databuf << std::endl;
+        if (log_verbose && !is_daemon)
+            std::cout << inet_ntoa(src_addr.sin_addr) << ":" << src_addr.sin_port << " > " << databuf << std::endl;
     }
 };
 
 
 sig_atomic_t exit_now=0;
+sig_atomic_t send_notify=1;
 void ctrlc_handler(int) {
     exit_now = 1;
+}
+void sigalrm_handler(int) {
+    send_notify = 1;
 }
 
 int main(void)
@@ -267,16 +277,24 @@ int main(void)
     sigemptyset(&sigIntHandler.sa_mask);
     sigIntHandler.sa_flags = 0;
     sigaction(SIGINT, &sigIntHandler, NULL);
+    sigIntHandler.sa_handler = sigalrm_handler;
+    sigaction(SIGALRM, &sigIntHandler, NULL);
 
     broadcast_socket bcast;
-    unicast_socket::get().notify();
-    // catch errors (and ctrl-c) so we can close sockets properly
-    try {
-        while(!exit_now)
+    while(!exit_now) {
+        if (send_notify) {
+            send_notify=0;
+            unicast_socket::get().notify();
+            alarm(cache_age/2);
+        }
+        try {
             bcast.read();
-    } catch (const socket_error e) {
-        if (e.code != EINTR)
-            std::cout << e.what() << std::endl;
+        } catch (const socket_error e) {
+            if (e.code != EINTR) {
+                std::cout << e.what() << std::endl;
+                throw;
+            }
+        }
     }
     return 0;
 }

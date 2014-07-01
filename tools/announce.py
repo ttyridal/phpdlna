@@ -21,6 +21,18 @@
 from socket import socket, inet_aton, IPPROTO_IP, IP_ADD_MEMBERSHIP, IP_DROP_MEMBERSHIP, \
                    AF_INET, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR, INADDR_ANY, IP_MULTICAST_TTL
 import struct
+import select,time
+from socket import _socketobject
+
+def add_membership(self, grp):
+    mreq = struct.pack('=4sl', inet_aton(grp), INADDR_ANY)     # pack upnp_broadcast_addr correctly
+    self.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)       # Request upnp_broadcast_addr
+def drop_membership(self, grp):
+    mreq = struct.pack('=4sl', inet_aton(grp), INADDR_ANY)     # pack upnp_broadcast_addr correctly
+    self.setsockopt(IPPROTO_IP, IP_DROP_MEMBERSHIP, mreq)
+_socketobject.add_membership = add_membership
+_socketobject.drop_membership = drop_membership
+
 
 def read_c_constant_string(fromfile, string):
     with open(fromfile,"r") as f:
@@ -82,27 +94,31 @@ def msearch_reply(addr):
         unicast_socket.sendto(m, addr)
 
 unicast_socket.setsockopt(IPPROTO_IP, IP_MULTICAST_TTL, 3)
-notify(unicast_socket)
+next_notify = 0
 
 #broadcast listen:
 
 broadcast_socket = socket(AF_INET, SOCK_DGRAM)
 broadcast_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-mreq = struct.pack('=4sl', inet_aton(upnp_broadcast_addr), INADDR_ANY) # pack upnp_broadcast_addr correctly
-broadcast_socket.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)       # Request upnp_broadcast_addr
+broadcast_socket.add_membership(upnp_broadcast_addr)
 broadcast_socket.bind((upnp_broadcast_addr, upnp_broadcast_port))      # Bind to all intfs
 
 try:
     while True:
-        msg, addr = broadcast_socket.recvfrom(BUFFER_SIZE)
-        if msg.startswith("M-SEARCH"):
-            print "got m-search"
+        if time.time()>next_notify:
+            notify(unicast_socket)
+            next_notify=round(time.time()+0.5)+cache_age/2
 
-            print str(addr)+":\n  "  + "\n  ".join(msg.replace("\r","\\r").split("\n"))
-            msearch_reply(addr)
+        (r,w,x) = select.select([broadcast_socket],[],[], next_notify-int(time.time()))
+        if broadcast_socket in r:
+            msg, addr = broadcast_socket.recvfrom(BUFFER_SIZE)
+            if msg.startswith("M-SEARCH"):
+                print "got m-search"
+
+                print str(addr)+":\n  "  + "\n  ".join(msg.replace("\r","\\r").split("\n"))
+                msearch_reply(addr)
 except KeyboardInterrupt: pass
 finally:
-    broadcast_socket.setsockopt(IPPROTO_IP, IP_DROP_MEMBERSHIP, mreq)
+    broadcast_socket.drop_membership(upnp_broadcast_addr)
     broadcast_socket.close()
     unicast_socket.close()
-
