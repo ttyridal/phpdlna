@@ -72,7 +72,6 @@ class ContentDirectory {
         return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$items->count, 'UpdateID'=>13);
     }
     function Browse($req) {
-        //TODO: Consider $req->StartingIndex and $req->RequestedCount
         //TODO (maybe): Consider $req->Filter
 
         # The objectId should be '0' for the root container.
@@ -185,8 +184,9 @@ class ContentDirectory {
             }
             finfo_close($finfo);
         }
-
-        return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$items->count, 'UpdateID'=>13);
+        $totalMatches=$items->count;
+        $items = $items->slice($req->StartingIndex, $req->RequestedCount);
+        return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$totalMatches, 'UpdateID'=>13);
     }
 
     function GetSystemUpdateID() {

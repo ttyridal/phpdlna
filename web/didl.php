@@ -128,6 +128,30 @@ class DIDL {
         addNodeWithText($ndItem, 'upnp:class', 'object.item.videoItem');
         return new DIDLitem($ndItem);
     }
+    function slice($startidx, $cnt=-1) {
+        // todo: clone items to $that instead of destroying $this
+        // $that = new DIDL($this->parent_id);
+        $i = $this->didlroot->firstChild;
+        while ($startidx>0 && $this->count>0) {
+            $startidx--;
+            $c = $i;
+            $i = $i->nextSibling;
+            $this->didlroot->removeChild($c);
+            $this->count--;
+        }
+        if ($cnt<0 || $this->count<$cnt) return $this;
+        $this->count=$cnt;
+        while($cnt>0 && $i!==NULL) {
+            $cnt--;
+            $i=$i->nextSibling;
+        }
+        while($i!==NULL) {
+            $c=$i;
+            $i=$i->nextSibling;
+            $this->didlroot->removeChild($c);
+        }
+        return $this;
+    }
     function getXML($no_header=true) {
         return $this->didldoc->saveXML($no_header?$this->didldoc->firstChild:NULL); // get first child to avoid xml header.
     }
