@@ -96,7 +96,7 @@ class ContentDirectory {
         if ($req->ObjectID == '0') { //ROOT
             $folderid=0;
             foreach (Config::$folders as $folder) {
-                $items->addFolder($folder['webpath'], sprintf("%d", ++$folderid))
+                $items->addFolder(basename($folder['webpath']), sprintf("%d", ++$folderid))
                 ->creator('Creator')
                 ->genre('Genre')
                 ->artist('Artist')
