@@ -5,10 +5,10 @@ UPnP / DLNA server in PHP - use an existing web server as media hub
 
 
 Many UPnP / DLNA Media Servers (or Digital Media Server (DMS) in DLNA speach)
-have been written. As far as I have found, they all include web server (and 
+have been written. As far as I have found, they all include web server (and
 soap+xml framework)
 
-If you already have a web server installed, and considering that UPnP is 
+If you already have a web server installed, and considering that UPnP is
 basically http with a tiny module doing UDP broadcasts for discovery,
 one might wonder why an additional http server is necessary.
 
@@ -19,19 +19,59 @@ upnp notify and answering m-search requests). Everything is then directed to
 the php script on your existing web server.
 
 
-##Configuration
+Be aware that this is not an "end user" product. You'll probably need to compile
+some c-code (or, at least run some python) and change various files.  You'll also
+need to install and configure the web server Apache (others might work, not tested)
 
-tools/config.h:
-server location should point to the rootDesc.xml (see below)
+## Installing
+Copy the files in phpdlna.git/web/* to a convenient location on your web server:
 
-web/rootDesc.xml: 
- URLBase should be updated to your configuration
- UDN should match config.h
- URL's assume that the /web folder is accessible at
- "URLBASE/phpdlna"
+in phpdlna.git:
 
-web/config.php:
- Define the folders to share. See config.php\_example
+```mkdir /var/www/phpdlna && cp -a web/* /var/www/phpdlna/```
+
+In phpdlna.git/tools:
+
+```cp config.h.src config.h```
+
+and edit config.h as appropriate. Usually the server_location string should be enough.
+It is suggested to use the **IP** address (host name might work, depending on your
+rendering device).
+
+If you're going to use the C version of announce, you now need to compile it:
+```g++ announce.cpp -o announce```.
+The python version does not need compiling - and uses the same config.h for it's settings.
+
+Further we'll need *rootdesc.xml*.
+
+in /var/www/phpdlna/:
+
+```cp rootDesc.xml.src rootDesc.xml```
+
+and update ```URLBase``` to point to the root folder on your
+server. If you chose another location than *phpdlna* for installation,
+you'll also need to update the various *URL entries.
+
+
+##Configuring media sources
+
+The files to serve must be configured in /var/www/phpdlna/config.php.
+An example with is provided in config.php_example.
+
+Additionally it is required that apache (others, untested) will serve your
+files, as specified.
+
+Further the web server needs to set the correct headers. You may use ```.htaccess```
+files, or configure this in the main Apache config. see htaccess_example for details
+- and your favourite search engine, on how to configure Apache.
+
+After testing that you can actually access your media files with a browser, curl or
+similar, say a few prayers and test from your renderer (WDTV, xbmc or others?)..
+
+Oh, and before that will work - You'll need to start the announcer, and let it run:
+
+```phpdlna.git/tools/announce &```
+
 
 ##Misc
 
@@ -56,8 +96,8 @@ dependencies.
 
 ##Technical notes
 * UDP discovery cache-control:
-Some renderers will simply stop playing and disconnect if a notify is not 
-received when the time expires. 
+Some renderers will simply stop playing and disconnect if a notify is not
+received when the time expires.
 
 * Same source ip
 Some renderers (notably wdtv live) will not accept that the web server

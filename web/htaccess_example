@@ -6,3 +6,9 @@ ForceType text/xml
 #ForceType video/mpeg
 ForceType video/x-matroska
 </Files>
+
+# Some clients have shown picky on the rootdesc.xml:
+#RewriteEngine On
+#RewriteCond %{HTTP_USER_AGENT} Dalvik [OR]
+#RewriteCond %{HTTP_USER_AGENT} Platinum
+#RewriteRule ^(.*)rootDesc.xml$ $1rootDesc_no_dlna.xml [L]

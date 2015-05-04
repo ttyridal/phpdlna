@@ -3,6 +3,14 @@ class Config {
     static $folders;
 };
 
+// Define a location where we should pick up media files
+// The example below specifies that if you eg have a
+// /media/music/song.mp3 on your server, it is accessible
+// as http://192.168.0.1/media/music/song.mp3
+// In other words, your server is at 192.168.0.1
+//
+// Before moving to your dlna client, you should verify that
+// by eg pointing your browser to that location
 Config::$folders = array(
             array('hostpath'=>'/media/', 'webpath'=>'http://192.168.0.1/media/')
         );
