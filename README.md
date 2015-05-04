@@ -73,6 +73,9 @@ Oh, and before that will work - You'll need to start the announcer, and let it r
 ```phpdlna.git/tools/announce &```
 
 
+You can use the tools/validate.py to verify and debug the installation
+
+
 ##Misc
 
 Why?
