@@ -34,26 +34,23 @@ import time
 import sys
 import re
 import lxml.etree as etree
+from lxml.builder import ElementMaker
 try:
     from urllib.parse import urlparse
     from urllib.parse import urljoin
+    from urllib.request import urlopen, Request
 except ImportError:
     from urlparse import urlparse
     from urlparse import urljoin
-try:
-    from urllib.request import urlopen
-except ImportError:
-    from urllib import urlopen
+    from urllib2 import urlopen, Request
 
 MCAST_GRP   = "239.255.255.250"
 MCAST_PORT  = 1900
 
-def ansicolor_yellow(s):
-    return "\033[93m%s\033[0m"%s
-def ansicolor_green(s):
-    return "\033[92m%s\033[0m"%s
-def ansicolor_red(s):
-    return "\033[91m%s\033[0m"%s
+def ansicolor_yellow(s): return "\033[93m%s\033[0m"%s
+def ansicolor_green(s): return "\033[92m%s\033[0m"%s
+def ansicolor_red(s): return "\033[91m%s\033[0m"%s
+
 
 def find_servers():
     s1 = b'\r\n'.join([
@@ -102,12 +99,16 @@ def find_servers():
             phpdlna_servers.append((addr[0], services['upnp:rootdevice']))
         else:
             s = services['SERVER']
-        print(s, "@", services['upnp:rootdevice'],"\n  answer from:", ":".join([str(x) for x in addr]))
+        if not 'upnp:rootdevice' in services:
+            print(s, "@", "*NO upnp:rootdevice*","\n  answer from:", ":".join([str(x) for x in addr]))
+        else:
+            print(s, "@", services['upnp:rootdevice'],"\n  answer from:", ":".join([str(x) for x in addr]))
 
         for st,loc in services.items():
             if st == 'SERVER': continue
             print(" ",st)
     return phpdlna_servers
+
 
 def check_scpd(scdpurl):
     try:
@@ -120,45 +121,168 @@ def check_scpd(scdpurl):
     except Exception as e:
         print(ansicolor_red("Failed to parse scdp XML: %s"%e))
         return -1
-
-    print(ansicolor_yellow("Warning: scpd fetchable but not validated (not impl)"))
+    print("SCPD downloadable, and valid XML")
     return 0
 
+
+def _soap_request(req, url, action):
+    SOAPENV_NS = u'http://schemas.xmlsoap.org/soap/envelope/'
+    S = ElementMaker(namespace=SOAPENV_NS, nsmap={'s':SOAPENV_NS})
+    sr = S.Envelope( S.Body(req) )
+
+    r = Request(url, headers={'soapaction' : action,
+                              'content-type': 'text/xml; charset="utf-8"'})
+    sr.attrib['{{{pre}}}encodingStyle'.format(pre=SOAPENV_NS)] = 'http://schemas.xmlsoap.org/soap/encoding/'
+    l = urlopen(r,etree.tostring(sr,xml_declaration=True, encoding='utf-8')).read()
+    return etree.fromstring(l)
+
+
+def check_connection_manager(url):
+    UPNP_CM_NS = u'urn:schemas-upnp-org:service:ConnectionManager:1'
+    CM = ElementMaker(namespace=UPNP_CM_NS, nsmap={None:UPNP_CM_NS})
+
+    l = _soap_request(
+            CM.GetProtocolInfo(
+            ),
+            url, UPNP_CM_NS+u'#GetProtocolInfo')
+
+    if not l.xpath('//cm:GetProtocolInfoResponse/Source/text()', namespaces={u'cm':UPNP_CM_NS}):
+        print(ansicolor_red("Error GetProtocolInfo failed (no source)"))
+        return -1
+##     if not l.xpath('//cm:GetProtocolInfoResponse/Sink/text()', namespaces={u'cm':UPNP_CM_NS}):
+##         print(ansicolor_red("Error GetProtocolInfo failed (no sink)"))
+##         return -1
+    print("ConnectionManager: GetProtocolInfo OK")
+
+
+def _soap_upnp_browse(url, objectid):
+    UPNP_CD_NS = u'urn:schemas-upnp-org:service:ContentDirectory:1'
+    CD = ElementMaker(namespace=UPNP_CD_NS, nsmap={None:UPNP_CD_NS})
+
+    l = _soap_request(
+            CD.Browse(
+                CD.ObjectID(objectid),
+                CD.BrowseFlag('BrowseDirectChildren'),
+                CD.Filter('*'),
+                CD.StartingIndex('0'),
+                CD.RequestedCount('8'),
+                CD.SortCriteria(),
+            ),
+            url, UPNP_CD_NS+u'#Browse')
+
+    l = l.xpath('//cd:BrowseResponse/Result/text()', namespaces={u'cd':UPNP_CD_NS})[0]
+    return etree.fromstring(l)
+
+
+def _find_playable_item(ctrlurl, didl_root):
+    NS = {u'didl':u'urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/',
+          u'dc':u'http://purl.org/dc/elements/1.1/' }
+
+    didl = didl_root
+    path=[]
+    while not didl.xpath('//didl:item', namespaces=NS):
+        c = didl.xpath('//didl:container[1]',namespaces=NS)
+        if not c:
+            print(ansicolor_yellow("Warning, unable to find a downloadable item (path:/%s)"%('/'.join(path))))
+            print(ansicolor_yellow("browse_server test can not verify file access"))
+            return (None, None)
+        c=c[0]
+        didl = _soap_upnp_browse(ctrlurl, c.attrib['id'])
+        path.append(c.xpath('//dc:title/text()',namespaces=NS)[0])
+    c = didl.xpath('//didl:item[1]', namespaces=NS)[0]
+    path.append(c.xpath('//dc:title/text()',namespaces=NS)[0])
+    url = c.xpath('//didl:res/text()',namespaces=NS)[0]
+    return path, url
+
+
+def test_http_HEAD(url):
+    r = Request(url)
+    r.get_method = lambda : 'HEAD'
+    try: l = urlopen(r)
+    except Exception as e:
+        print(ansicolor_red("http HEAD request failed: %s"%str(e)))
+        return -1
+
+    try: l.getheader # python3
+    except: l.getheader = l.info().getheader #python2
+
+    if l.getheader('Accept-Ranges', None) is None:
+        print(ansicolor_yellow("Warning: Server does not provide Accept-Ranges"))
+    elif not 'bytes' in l.getheader('Accept-Ranges'):
+        print(ansicolor_yellow("Warning: Server does not provide Accept-Ranges: bytes"))
+    if l.getheader('Content-Length', None) is None:
+        print(ansicolor_yellow("Warning: Server does not provide Content-Length"))
+    if l.getheader('Content-Type', None) is None:
+        print(ansicolor_yellow("Warning: Server does not provide Content-Type"))
+    elif not (l.getheader('Content-Type').startswith('audio/') or
+              l.getheader('Content-Type').startswith('video/')):
+        print(ansicolor_yellow("Warning: Content type not audio nor video !?"))
+
+
 def browse_server(ctrlurl):
-    print(ansicolor_yellow("Warning: dlna-Browse request not tested (not impl)"))
-    pass
+    NS = {u'didl':u'urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/',
+          u'dc':u'http://purl.org/dc/elements/1.1/' }
+
+    try: didl = _soap_upnp_browse(ctrlurl, '0')
+    except Exception as e:
+        print("upnp browse request failed: %s"%str(e))
+        return -1
+
+    print("server toplevel folders: ",didl.xpath('//dc:title/text()',namespaces=NS))
+
+    path, url = _find_playable_item(ctrlurl, didl)
+    if path is None: return -1
+
+    # browse to an item we can test-download
+    print('Trying to fetch /'+("/".join(path)),"\n  @ ",url)
+
+    if test_http_HEAD(url):
+        return -1
+
+    print(ansicolor_green("Server browsable, and file downloadable"))
+
 
 def check_server(descurl):
     ns={'upnp':'urn:schemas-upnp-org:device-1-0'}
-    try:
-        l = urlopen(descurl).read()
+    try: l = urlopen(descurl).read()
     except Exception as e:
         print(ansicolor_red("Failed to load %s: %s"%(descurl,e)))
         return -1
-    try:
-        l = etree.fromstring(l)
+    try: l = etree.fromstring(l)
     except Exception as e:
         print(ansicolor_red("Failed to parse rootdesc XML: %s"%e))
         return -1
-    baseurl = [ etree.tostring(x, method='text').strip().decode('utf-8') for x in l.xpath('//upnp:URLBase', namespaces=ns) ][0]
 
-    v = [ x for x in l.xpath('//upnp:serviceType', namespaces=ns) if etree.tostring(x, method='text').strip() == b"urn:schemas-upnp-org:service:ContentDirectory:1" ]
+    x = l.xpath('//upnp:URLBase[1]/text()', namespaces=ns)
+    if not x:
+        print(ansicolor_yellow("No URLBase in in rootdesc"))
+        baseurl=""
+    else: baseurl = x[0]
 
-    if len(v)<1:
-        print(ansicolor_red("no ContentDirectory Service!"))
+    v = l.xpath('//upnp:serviceType[text() = \'urn:schemas-upnp-org:service:ConnectionManager:1\']', namespaces=ns)
+    if len(v) != 1:
+        print(ansicolor_red("there should be one ConnectionManager Service! (missing from rootdesc)"))
         return -1
-    if len(v)>1:
-        print(ansicolor_red("more than one ContentDirectory Service!"))
+    x = v[0].getparent().findtext('upnp:controlURL', namespaces=ns)
+    if x is None:
+        print(ansicolor_red("Missing controlURL on ConnectionManager"))
+        return -1
+    if check_connection_manager(urljoin(baseurl, x)):
+        return -1
+
+    v = l.xpath('//upnp:serviceType[text() = \'urn:schemas-upnp-org:service:ContentDirectory:1\']', namespaces=ns)
+    if len(v) != 1:
+        print(ansicolor_red("there should be one ContentDirectory Service! (missing from rootdesc)"))
         return -1
     x = v[0].getparent().findtext('upnp:SCPDURL', namespaces=ns)
     if x is None:
-        print(ansicolor_red("Missing SCPDURL"))
+        print(ansicolor_red("Missing SCPDURL in ContentDirectory"))
         return -1
     if check_scpd(urljoin(baseurl, x)):
         return -1
     x = v[0].getparent().findtext('upnp:controlURL', namespaces=ns)
     if x is None:
-        print(ansicolor_red("Missing controlURL"))
+        print(ansicolor_red("Missing controlURL in ContentDirectory"))
         return -1
 
     if browse_server(urljoin(baseurl, x)):
@@ -178,6 +302,7 @@ def main():
         if urlparse(s[1]).netloc.split(':')[0] != s[0].split(':')[0]:
             print(ansicolor_yellow("Warning: announcer address not equal config.h:server_location"))
         if check_server(s[1]):
+            print(ansicolor_red("Failed"))
             return -1
         else:
             print(ansicolor_green("Passed"))

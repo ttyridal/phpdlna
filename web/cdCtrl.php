@@ -208,6 +208,9 @@ class ContentDirectory {
     }
 }
 
+$headers=array_change_key_case(getallheaders()); //ofcourse ther's a php function for that...
+$body = @file_get_contents('php://input');
+_debug("Request:",array('url'=>"$_SERVER[REQUEST_METHOD] http://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]", 'headers'=>$headers, 'body'=>$body));
 
 $srv = new SoapServer("wsdl/upnp_av.wsdl");
 $srv->setClass('ContentDirectory');
