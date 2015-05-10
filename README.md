@@ -19,9 +19,11 @@ upnp notify and answering m-search requests). Everything is then directed to
 the php script on your existing web server.
 
 
-Be aware that this is not an "end user" product. You'll probably need to compile
-some c-code (or, at least run some python) and change various files.  You'll also
-need to install and configure the web server Apache (others might work, not tested)
+Be aware that this is not a polished product that will automatically work out of the box. 
+You'll probably need to compile some c-code (or run some python scripts) and change 
+various files.  You'll also need to install and configure the web server Apache 
+(others might work, not tested) - That's kind of the point. If you don't already have
+a webserver, you'll be better of with [PS3 media server](http://www.ps3mediaserver.org/) [ReadyMedia](https://wiki.archlinux.org/index.php/ReadyMedia) or similar 
 
 ## Installing
 Copy the files in phpdlna.git/web/* to a convenient location on your web server:
@@ -58,7 +60,7 @@ you'll also need to update the various *URL entries.
 The files to serve must be configured in /var/www/phpdlna/config.php.
 An example with is provided in config.php_example.
 
-Additionally it is required that apache (others, untested) will serve your
+Additionally it is required that the web server will serve your
 files, as specified.
 
 Further the web server needs to set the correct headers. You may use ```.htaccess```
@@ -74,6 +76,8 @@ Oh, and before that will work - You'll need to start the announcer, and let it r
 
 
 You can use the tools/validate.py to verify and debug the installation
+
+```python phpdlna.git/tools/validate.py```
 
 ### Ngnix support
 phpdlna has been tested to work with nginx and php-fpm
