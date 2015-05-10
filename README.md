@@ -111,6 +111,8 @@ location / {
 }
 
 location ~ /phpdlna/.*\.php$ {
+    #the param is also globally defined somewhere (usually)
+    fastcgi_param   SCRIPT_FILENAME         $document_root$fastcgi_script_name;
     fastcgi_pass unix:/var/run/php5-fpm.sock;
 }
 }
