@@ -75,6 +75,43 @@ Oh, and before that will work - You'll need to start the announcer, and let it r
 
 You can use the tools/validate.py to verify and debug the installation
 
+### Ngnix support
+phpdlna has been tested to work with nginx and php-fpm
+
+example nginx.conf:
+```
+# this assumes phpdlna.git/web is installed in /var/www/phpdlna
+server {
+#other stuff like server_name and listen
+root /var/www;
+
+#types are typically includes in a global
+#mime_types, but listed here are typical types
+#needed for dlna
+types {
+    image/png           png;
+    image/jpeg          jpeg jpg;
+    audio/mpeg          mp3;
+    video/mpeg          mpeg mpg;
+    video/x-matroska    mkv;
+    video/mp4           mp4;
+    video/quicktime     mov;
+    video/x-flv         flv;
+    video/x-msvideo     avi;
+    video/x-ms-wmv      wmv;
+    text/xml    xml;
+}
+
+location / {
+    try_files $uri =404;
+}
+
+location ~ /phpdlna/.*\.php$ {
+    fastcgi_pass unix:/var/run/php5-fpm.sock;
+}
+}
+```
+
 
 ##Misc
 
