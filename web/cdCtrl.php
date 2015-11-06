@@ -27,6 +27,7 @@ https://github.com/ronenmiz/TVersity/wiki/Content-Directory-Metadata
 
 require_once("config.php");
 require_once("didl.php");
+require_once("polyfills.php");
 
 function _debug($someText, $someVar = null) {
     $logFile = "/tmp/phpdlna-debug.txt";
