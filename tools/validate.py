@@ -38,11 +38,11 @@ from lxml.builder import ElementMaker
 try:
     from urllib.parse import urlparse
     from urllib.parse import urljoin
-    from urllib.request import urlopen, Request
+    from urllib.request import urlopen, Request, URLError
 except ImportError:
     from urlparse import urlparse
     from urlparse import urljoin
-    from urllib2 import urlopen, Request
+    from urllib2 import urlopen, Request, URLError
 
 MCAST_GRP   = "239.255.255.250"
 MCAST_PORT  = 1900
@@ -141,10 +141,14 @@ def check_connection_manager(url):
     UPNP_CM_NS = u'urn:schemas-upnp-org:service:ConnectionManager:1'
     CM = ElementMaker(namespace=UPNP_CM_NS, nsmap={None:UPNP_CM_NS})
 
-    l = _soap_request(
-            CM.GetProtocolInfo(
-            ),
-            url, UPNP_CM_NS+u'#GetProtocolInfo')
+    try:
+        l = _soap_request(
+                CM.GetProtocolInfo(
+                ),
+                url, UPNP_CM_NS+u'#GetProtocolInfo')
+    except URLError as e:
+        print(e,url)
+        return -1
 
     if not l.xpath('//cm:GetProtocolInfoResponse/Source/text()', namespaces={u'cm':UPNP_CM_NS}):
         print(ansicolor_red("Error GetProtocolInfo failed (no source)"))
