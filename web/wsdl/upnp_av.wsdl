@@ -60,6 +60,13 @@
     <part name="body" element="cd:GetSearchCapabilitiesResponse"/>
 </message>
 
+<message name="GetSystemUpdateIDMsg">
+    <part name="body" element="cd:GetSystemUpdateID"/>
+</message>
+<message name="GetSystemUpdateIDResponseMsg">
+    <part name="body" element="cd:GetSystemUpdateIDResponse"/>
+</message>
+
 <message name="GetProtocolInfoMsg">
     <part name="body" element="cm:GetProtocolInfo"/>
 </message>
@@ -85,6 +92,12 @@
         <output message="tns:GetSearchCapabilitiesResponseMsg"/>
     </operation>
 
+    <operation name="GetSystemUpdateID">
+        <documentation>Browse the dlna/upnp server</documentation>
+        <input message="tns:GetSystemUpdateIDMsg"/>
+        <output message="tns:GetSystemUpdateIDResponseMsg"/>
+    </operation>
+
     <operation name="GetProtocolInfo">
         <documentation>Browse the dlna/upnp server</documentation>
         <input message="tns:GetProtocolInfoMsg"/>
@@ -106,6 +119,10 @@
     </operation>
     <operation name="GetSearchCapabilities">
         <soap:operation soapAction="urn:schemas-upnp-org:service:ContentDirectory:1#GetSearchCapabilities"/>
+        <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="GetSystemUpdateID">
+        <soap:operation soapAction="urn:schemas-upnp-org:service:ContentDirectory:1#GetSystemUpdateID"/>
         <output><soap:body use="literal"/></output>
     </operation>
 
