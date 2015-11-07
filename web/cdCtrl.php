@@ -80,6 +80,7 @@ class ContentDirectory {
     function Search($req) {
         //TODO: implement :)
         //TODO: Consider $req->StartingIndex and $req->RequestedCount
+        _debug("Called unimplemented meth Search");
         $items = new DIDL(DIDL::ROOT_ID);
         return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$items->count, 'UpdateID'=>$this->SystemUpdateID);
     }
@@ -251,7 +252,10 @@ class ContentDirectory {
 
 $headers=array_change_key_case(getallheaders()); //ofcourse ther's a php function for that...
 $body = @file_get_contents('php://input');
-_debug("Request:",array('url'=>"$_SERVER[REQUEST_METHOD] http://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]", 'headers'=>$headers, 'body'=>$body));
+if (0)
+    _debug("Request:",array('url'=>"$_SERVER[REQUEST_METHOD] http://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]", 'headers'=>$headers, 'body'=>$body));
+else
+    _debug("Request: ".$headers['soapaction']);
 
 $srv = new SoapServer("wsdl/upnp_av.wsdl");
 $srv->setClass('ContentDirectory');
