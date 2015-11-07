@@ -37,6 +37,11 @@ function _debug($someText, $someVar = null) {
     fclose($fh);
 }
 
+function demangle_fname($fname)
+{
+    return str_replace(array('.','_'),' ', $fname);
+}
+
 class InvalidInputException extends Exception { }
 
 class ContentDirectory {
@@ -147,9 +152,9 @@ class ContentDirectory {
 
                 $fname = pathinfo($f, PATHINFO_FILENAME);
                 if (substr($ct, 0, 6) === 'video/') {
-                    $itm = $items->addVideo(str_replace(array('.','_'),' ', $fname));
+                    $itm = $items->addVideo(demangle_fname($fname));
                 } else if (substr($ct, 0, 6) === 'audio/') {
-                    $itm = $items->addSong(str_replace(array('.','_'),' ', $fname));
+                    $itm = $items->addSong(demangle_fname($fname));
                 } else
                     continue;
                 $itm->resource($webpath.$f, array('filesize'=>filesize($path.$f)))
