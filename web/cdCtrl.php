@@ -45,6 +45,12 @@ function demangle_fname($fname)
 class InvalidInputException extends Exception { }
 
 class ContentDirectory {
+    protected $SystemUpdateID = '1';
+
+    function __construct() {
+//         $this->SystemUpdateID = ''.time();
+    }
+
     private function lookup_real_path($id) {
         // hide realpath by mapping folders to numbers: 1.1.2 is second folder in the first folder
         // under the first configured root..  prevent infoleak by listing non-shared folders.
@@ -75,7 +81,7 @@ class ContentDirectory {
         //TODO: implement :)
         //TODO: Consider $req->StartingIndex and $req->RequestedCount
         $items = new DIDL(DIDL::ROOT_ID);
-        return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$items->count, 'UpdateID'=>13);
+        return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$items->count, 'UpdateID'=>$this->SystemUpdateID);
     }
     function Browse($req) {
         //TODO (maybe): Consider $req->Filter
@@ -192,11 +198,11 @@ class ContentDirectory {
         }
         $totalMatches=$items->count;
         $items = $items->slice($req->StartingIndex, $req->RequestedCount);
-        return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$totalMatches, 'UpdateID'=>13);
+        return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$totalMatches, 'UpdateID'=>$this->SystemUpdateID);
     }
 
     function GetSystemUpdateID() {
-        return array('Id'=>'13');
+        return array('Id'=>$this->SystemUpdateID);
     }
 
     function GetSearchCapabilities() {
