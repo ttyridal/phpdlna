@@ -83,26 +83,48 @@ class ContentDirectory {
         $items = new DIDL(DIDL::ROOT_ID);
         return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$items->count, 'UpdateID'=>$this->SystemUpdateID);
     }
-    function Browse($req) {
+    function BrowseMetadata($req)
+    {
+        _debug("Metadata of ".$req->ObjectID);
+
         //TODO (maybe): Consider $req->Filter
 
-        # The objectId should be '0' for the root container.
-        if ($req->BrowseFlag == 'BrowseDirectChildren')
-            $items = new DIDL($req->ObjectID);
-        else if ($req->ObjectID == '0') {
-            _debug("root metadata: ".$req->BrowseFlag);
+        if ($req->ObjectID == '0') {
             $items = new DIDL(DIDL::ROOT_ID);
 
             $items->addFolder("root", '0')
                 ->searchclass("object.item.audioItem")
                 ->searchclass("object.item.videoItem")
-                ->searchclass("object.item.imageItem");
-            return $items;
+                ->searchclass("object.item.imageItem")
+                ;
         } else {
-            _debug("Don't really know what to do here objid=".$req->ObjectID);
-            $items = new DIDL(0);
+            try {
+                list($path, $webpath) = $this->lookup_real_path($req->ObjectID);
+            } catch (InvalidInputException $e) {
+                return array('illegal');
+            }
+            _debug("metadata for ".$path." : ".$webpath);
+
+            if (substr_count($req->ObjectID, '.') == 0)
+                $items = new DIDL('0');
+            else {
+                $pid = implode('.', array_slice(explode('.', $req->ObjectID), 0, -1));
+                $items = new DIDL($pid);
+            }
+            $fname = demangle_fname(pathinfo($path, PATHINFO_FILENAME));
+            $items->addFolder($fname, $req->ObjectID);
         }
+        $totalMatches=$items->count;
+        $items = $items->slice($req->StartingIndex, $req->RequestedCount);
+        return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$totalMatches, 'UpdateID'=>$this->SystemUpdateID);
+    }
+
+    function BrowseDirectChildren($req)
+    {
         _debug("Direct children of ".$req->ObjectID);
+
+        //TODO (maybe): Consider $req->Filter
+        $items = new DIDL($req->ObjectID);
 
         if ($req->ObjectID == '0') { //ROOT
             $folderid=0;
@@ -199,6 +221,13 @@ class ContentDirectory {
         $totalMatches=$items->count;
         $items = $items->slice($req->StartingIndex, $req->RequestedCount);
         return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$totalMatches, 'UpdateID'=>$this->SystemUpdateID);
+    }
+
+    function Browse($req) {
+        if ($req->BrowseFlag == 'BrowseMetadata')
+            return $this->BrowseMetadata($req);
+        else
+            return $this->BrowseDirectChildren($req);
     }
 
     function GetSystemUpdateID() {
