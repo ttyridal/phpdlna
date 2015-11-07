@@ -159,23 +159,36 @@ def check_connection_manager(url):
     print("ConnectionManager: GetProtocolInfo OK")
 
 
-def _soap_upnp_browse(url, objectid):
+def _soap_upnp_browse(url, objectid, flag=None):
     UPNP_CD_NS = u'urn:schemas-upnp-org:service:ContentDirectory:1'
     CD = ElementMaker(namespace=UPNP_CD_NS, nsmap={None:UPNP_CD_NS})
 
-    l = _soap_request(
-            CD.Browse(
-                CD.ObjectID(objectid),
-                CD.BrowseFlag('BrowseDirectChildren'),
-                CD.Filter('*'),
-                CD.StartingIndex('0'),
-                CD.RequestedCount('8'),
-                CD.SortCriteria(),
-            ),
-            url, UPNP_CD_NS+u'#Browse')
+    if flag:
+        l = _soap_request(
+                CD.Browse(
+                    CD.ObjectID(objectid),
+                    CD.BrowseFlag('BrowseMetadata'),# @id,upnp:class,res,res@protocolInfo,res@av:authenticationUri,res@size,dc:title,upnp:albumArtURI,res@dlna:ifoFileURI,res@protection,res@bitrate,res@duration,res@sampleFrequency,res@bitsPerSample,res@nrAudioChannels,res@resolution,res@colorDepth,dc:date,av:dateTime,upnp:artist,upnp:album,upnp:genre,dc:contributer,upnp:storageFree,upnp:storageUsed,upnp:originalTrackNumber,dc:publisher,dc:language,dc:region,dc:description,upnp:toc,@childCount,upnp:albumArtURI@dlna:profileID,res@dlna:cleartextSize,@restricted,@dlna:dlnaManaged
+                    CD.Filter('*'),
+                    CD.StartingIndex('0'),
+                    CD.RequestedCount('1'),
+                    CD.SortCriteria(),
+                ),
+                url, UPNP_CD_NS+u'#Browse')
+        print(etree.tostring(l, pretty_print=True))
+    else:
+        l = _soap_request(
+                CD.Browse(
+                    CD.ObjectID(objectid),
+                    CD.BrowseFlag('BrowseDirectChildren'),
+                    CD.Filter('*'),
+                    CD.StartingIndex('0'),
+                    CD.RequestedCount('8'),
+                    CD.SortCriteria(),
+                ),
+                url, UPNP_CD_NS+u'#Browse')
 
-    l = l.xpath('//cd:BrowseResponse/Result/text()', namespaces={u'cd':UPNP_CD_NS})[0]
-    return etree.fromstring(l)
+        l = l.xpath('//cd:BrowseResponse/Result/text()', namespaces={u'cd':UPNP_CD_NS})[0]
+        return etree.fromstring(l)
 
 
 def _find_playable_item(ctrlurl, didl_root):
@@ -223,9 +236,24 @@ def test_http_HEAD(url):
         print(ansicolor_yellow("Warning: Content type not audio nor video !?"))
 
 
+def test_misc_server(url):
+    UPNP_CD_NS = u'urn:schemas-upnp-org:service:ContentDirectory:1'
+    CD = ElementMaker(namespace=UPNP_CD_NS, nsmap={None:UPNP_CD_NS})
+
+    l = _soap_request(
+            CD.GetSystemUpdateID(),
+            url, UPNP_CD_NS+u'#GetSystemUpdateID')
+    l = l.xpath('//cd:GetSystemUpdateIDResponse/Id/text()', namespaces={u'cd':UPNP_CD_NS})[0]
+    if not l.isdigit(): return -1
+
 def browse_server(ctrlurl):
     NS = {u'didl':u'urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/',
           u'dc':u'http://purl.org/dc/elements/1.1/' }
+
+    try: _soap_upnp_browse(ctrlurl, '0', 'BrowseMetadata')
+    except Exception as e:
+        print("upnp browse request failed: %s"%str(e))
+        return -1
 
     try: didl = _soap_upnp_browse(ctrlurl, '0')
     except Exception as e:
@@ -287,6 +315,9 @@ def check_server(descurl):
     x = v[0].getparent().findtext('upnp:controlURL', namespaces=ns)
     if x is None:
         print(ansicolor_red("Missing controlURL in ContentDirectory"))
+        return -1
+
+    if test_misc_server(urljoin(baseurl, x)):
         return -1
 
     if browse_server(urljoin(baseurl, x)):
