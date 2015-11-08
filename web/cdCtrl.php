@@ -286,7 +286,7 @@ $srv = new SoapServer("wsdl/upnp_av.wsdl");
 $srv->setClass('ContentDirectory');
 
 ob_start();
-$srv->handle();
+$srv->handle($body);
 $soapXml = ob_get_contents();
 ob_end_clean();
 
