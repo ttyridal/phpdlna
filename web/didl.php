@@ -108,9 +108,10 @@ class DIDL {
         $this->count++;
         return new DIDLitem($ndItem);
     }
-    protected function addItem($title) {
+    protected function addItem($title, $id=null) {
+        if ($id === null) $id = md5($this->parent_id . $title);
         $ndItem = $this->didldoc->createElement('item');
-        $ndItem->setAttribute('id', md5($this->parent_id . $title));
+        $ndItem->setAttribute('id', $id);
         $ndItem->setAttribute('parentID', $this->parent_id);
         $ndItem->setAttribute('restricted', '1');
         addNodeWithText($ndItem, 'dc:title', $title);
@@ -118,13 +119,13 @@ class DIDL {
         $this->count++;
         return $ndItem;
     }
-    function addSong($title) {
-        $ndItem = $this->addItem($title);
+    function addSong($title, $id=null) {
+        $ndItem = $this->addItem($title, $id);
         addNodeWithText($ndItem, 'upnp:class', 'object.item.audioItem');
         return new DIDLitem($ndItem);
     }
-    function addVideo($title) {
-        $ndItem = $this->addItem($title);
+    function addVideo($title, $id=null) {
+        $ndItem = $this->addItem($title, $id);
         addNodeWithText($ndItem, 'upnp:class', 'object.item.videoItem');
         return new DIDLitem($ndItem);
     }

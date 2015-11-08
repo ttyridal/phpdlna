@@ -74,6 +74,7 @@ class ContentDirectory {
     private function lookup_real_path($id) {
         // hide realpath by mapping folders to numbers: 1.1.2 is second folder in the first folder
         // under the first configured root..  prevent infoleak by listing non-shared folders.
+        list($id, $fileid) = array_pad(explode('$',$id, 2), 2, null);
         $path_key = explode('.', $id);
         $key = intval(array_shift($path_key));
         if ($key > count(Config::$folders)) throw new InvalidInputException();
@@ -87,6 +88,15 @@ class ContentDirectory {
             $path.=$folders[$key-1].'/';
             $webpath.=$folders[$key-1].'/';
         }
+
+        if ($fileid !== null) {
+            list($folders, $files) = sorted_filelist($path, true);
+            $fileid = intval($fileid);
+            if ($fileid < 1 || $fileid > count($files)) throw new InvalidInputException();
+            $path .= $files[$fileid - 1];
+            $webpath .= $files[$fileid -1];
+        }
+
         return array($path, $webpath);
     }
 
@@ -122,11 +132,31 @@ class ContentDirectory {
             if (substr_count($req->ObjectID, '.') == 0)
                 $items = new DIDL('0');
             else {
-                $pid = implode('.', array_slice(explode('.', $req->ObjectID), 0, -1));
+                if (is_dir($path))
+                    $pid = implode('.', array_slice(explode('.', $req->ObjectID), 0, -1));
+                else
+                    $pid = explode('$', $req->ObjectID)[0];
                 $items = new DIDL($pid);
             }
             $fname = demangle_fname(pathinfo($path, PATHINFO_FILENAME));
-            $items->addFolder($fname, $req->ObjectID);
+            if (is_dir($path))
+                $items->addFolder($fname, $req->ObjectID);
+            else {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $res_opts = array('filesize'=>filesize($path));
+                $ct = finfo_file($finfo, $path);
+                $fname = pathinfo($path, PATHINFO_FILENAME);
+                if (substr($ct, 0, 6) === 'video/') {
+                    $itm = $items->addVideo(demangle_fname($fname), $req->ObjectID);
+                    $res_opts['protocolInfo'] = 'http-get:*:'.$ct.':*';
+                } else if (substr($ct, 0, 6) === 'audio/') {
+                    $itm = $items->addSong(demangle_fname($fname), $req->ObjectID);
+                    $res_opts['protocolInfo'] = 'http-get:*:'.$ct.':*';
+                } else
+                    return array('illegal');
+                $itm->resource($webpath, $res_opts);
+                finfo_close($finfo);
+            }
         }
         $totalMatches=$items->count;
         $items = $items->slice($req->StartingIndex, $req->RequestedCount);
@@ -140,6 +170,7 @@ class ContentDirectory {
         //TODO (maybe): Consider $req->Filter
         $items = new DIDL($req->ObjectID);
         $folderid = 0;
+        $fileid = 0;
 
         if ($req->ObjectID == '0') { //ROOT
             foreach (Config::$folders as $folder) {
@@ -158,6 +189,7 @@ class ContentDirectory {
         } else {
             try {
                 list($path, $webpath) = $this->lookup_real_path($req->ObjectID);
+                if (!is_dir($path)) throw new InvalidInputException();
             } catch (InvalidInputException $e) {
                 return array('illegal');
             }
@@ -178,15 +210,16 @@ class ContentDirectory {
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
             foreach ($files as $f)
             {
+                ++$fileid;
                 $ct = finfo_file($finfo, $path.$f);
                 $res_opts = array('filesize'=>filesize($path.$f));
 
                 $fname = pathinfo($f, PATHINFO_FILENAME);
                 if (substr($ct, 0, 6) === 'video/') {
-                    $itm = $items->addVideo(demangle_fname($fname));
+                    $itm = $items->addVideo(demangle_fname($fname), sprintf('%s$%d', $req->ObjectID, $fileid));
                     $res_opts['protocolInfo'] = 'http-get:*:'.$ct.':*';
                 } else if (substr($ct, 0, 6) === 'audio/') {
-                    $itm = $items->addSong(demangle_fname($fname));
+                    $itm = $items->addSong(demangle_fname($fname), sprintf('%s$%d', $req->ObjectID, $fileid));
                     $res_opts['protocolInfo'] = 'http-get:*:'.$ct.':*';
                 } else
                     continue;
