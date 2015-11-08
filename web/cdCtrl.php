@@ -42,6 +42,26 @@ function demangle_fname($fname)
     return str_replace(array('.','_'),' ', $fname);
 }
 
+function sorted_filelist($path, $withfiles)
+{
+    $folders=array();
+    $files=array();
+    foreach (new DirectoryIterator($path) as $fileInfo) {
+        if ($fileInfo->isDot()) continue;
+        if ($fileInfo->isDir()) {
+            $folders[] = $fileInfo->getFilename();
+        } else if ($withfiles) {
+            $files[] = $fileInfo->getFilename();
+        }
+    }
+    sort($folders);
+    if ($withfiles) {
+        sort($files);
+        return array($folders, $files);
+    } else
+        return $folders;
+}
+
 class InvalidInputException extends Exception { }
 
 class ContentDirectory {
@@ -60,16 +80,9 @@ class ContentDirectory {
         $path = Config::$folders[$key-1]['hostpath'];
         $webpath=Config::$folders[$key-1]['webpath'];
 
-        _debug("mapping..");
         foreach ($path_key as $key) {
             $folderid=0;
-            $folders=array();
-            foreach (new DirectoryIterator($path) as $fileInfo) {
-                if($fileInfo->isDot()) continue;
-                if(!$fileInfo->isDir()) continue;
-                $folders[] = $fileInfo->getFilename();
-            }
-            sort($folders);
+            $folders = sorted_filelist($path, false);
             if ($key > count($folders)) throw new InvalidInputException();
             $path.=$folders[$key-1].'/';
             $webpath.=$folders[$key-1].'/';
@@ -126,9 +139,9 @@ class ContentDirectory {
 
         //TODO (maybe): Consider $req->Filter
         $items = new DIDL($req->ObjectID);
+        $folderid = 0;
 
         if ($req->ObjectID == '0') { //ROOT
-            $folderid=0;
             foreach (Config::$folders as $folder) {
                 $items->addFolder(basename($folder['webpath']), sprintf("%d", ++$folderid))
                 ->creator('Creator')
@@ -150,20 +163,8 @@ class ContentDirectory {
             }
 
             _debug("listing: ".$path);
-            $folders=array();
-            $files=array();
-            foreach (new DirectoryIterator($path) as $fileInfo) {
-                if ($fileInfo->isDot()) continue;
-                if ($fileInfo->isDir()) {
-                    $folders[] = $fileInfo->getFilename();
-                } else {
-                    $files[] = $fileInfo->getFilename();
-                }
-            }
-            sort($files);
-            sort($folders);
+            list($folders, $files) = sorted_filelist($path, true);
 
-            $folderid=0;
             foreach ($folders as $f) {
                 $itm = $items->addFolder($f, sprintf('%s.%d', $req->ObjectID, ++$folderid));
                 foreach (array('folder.png','folder.jpg','album.png','album.jpg') as $icon) {
