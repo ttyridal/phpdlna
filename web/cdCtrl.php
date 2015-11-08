@@ -250,6 +250,24 @@ class ContentDirectory {
     }
 }
 
+function move_namespace_to_first_user($soapXml, $ns='ns1')
+{
+    $marker1 = "xmlns:$ns=";
+    $marker2 = "<$ns:";
+    $startpos = strpos($soapXml, $marker1);
+    $endpos = strpos($soapXml, "\"", $startpos + strlen($marker1) + 1);
+    if ($startpos === FALSE) return $soapXml;
+
+    $namespace = substr( $soapXml, $startpos, $endpos - $startpos + 1);
+
+    $soapXml = str_replace(' '.$namespace, '', $soapXml);
+
+    $insertpos = strpos($soapXml, '>', strpos($soapXml, $marker2));
+
+    $soapXml = substr_replace( $soapXml, ' '.$namespace, $insertpos, 0 );
+    return $soapXml;
+}
+
 $headers=array_change_key_case(getallheaders()); //ofcourse ther's a php function for that...
 $body = @file_get_contents('php://input');
 if (0)
@@ -269,6 +287,10 @@ ob_end_clean();
 // attribute, I'll be glad to hear about it.
 // Required by the platinum upnp library (plex, xbmc others...)
 $soapXml = str_replace('<SOAP-ENV:Envelope', '<SOAP-ENV:Envelope SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"', $soapXml);
+// if someone knows a better way to control namespace scope, I'll be glad to hear about it!
+// A lot of renderers are particularly picky about the xml (ps3, many more)
+$soapXml = move_namespace_to_first_user($soapXml);
+
 $length = strlen($soapXml);
 header("Content-Length: ".$length);
 echo $soapXml;
