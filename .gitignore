@@ -1,4 +1,6 @@
-web/rootDesc.xml
+web/rootDesc*.xml
 tools/config.h
 *.pyc
 tools/announce
+web/config.php
+web/.htaccess
