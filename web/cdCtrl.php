@@ -207,10 +207,14 @@ class ContentDirectory {
                     //->description("short description")
                     //->language("English")
                     ;
-                if (file_exists($path.$fname.'.png'))
+                if (file_exists($path.$fname.'.png')) {
+                    $itm->resource($webpath.$fname.'.png', array('protocolInfo'=>'http-get:*:image/png:DLNA.ORG_PN=PNG_TN'));
                     $itm->icon($webpath.$fname.'.png');
-                else if (file_exists($path.$fname.'.jpg'))
+                }
+                else if (file_exists($path.$fname.'.jpg')) {
+                    $itm->resource($webpath.$fname.'.jpg', array('protocolInfo'=>'http-get:*:image/jpeg:DLNA.ORG_PN=JPEG_TN'));
                     $itm->icon($webpath.$fname.'.jpg');
+                }
                 else {
                     foreach (array('folder.png','folder.jpg','album.png','album.jpg') as $icon) {
                         if (file_exists($path.$icon)) {
