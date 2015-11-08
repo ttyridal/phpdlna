@@ -178,15 +178,18 @@ class ContentDirectory {
             foreach ($files as $f)
             {
                 $ct = finfo_file($finfo, $path.$f);
+                $res_opts = array('filesize'=>filesize($path.$f));
 
                 $fname = pathinfo($f, PATHINFO_FILENAME);
                 if (substr($ct, 0, 6) === 'video/') {
                     $itm = $items->addVideo(demangle_fname($fname));
+                    $res_opts['protocolInfo'] = 'http-get:*:'.$ct.':*';
                 } else if (substr($ct, 0, 6) === 'audio/') {
                     $itm = $items->addSong(demangle_fname($fname));
+                    $res_opts['protocolInfo'] = 'http-get:*:'.$ct.':*';
                 } else
                     continue;
-                $itm->resource($webpath.$f, array('filesize'=>filesize($path.$f)))
+                $itm->resource($webpath.$f, $res_opts)
                     //->creator('Creator')
                     //->genre('Genre')
                     //->artist('Artist')
