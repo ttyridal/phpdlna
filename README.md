@@ -154,3 +154,8 @@ to the same ip as the notify / m-search reply is sent from)
 Are specified in http://upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.1.pdf to
 "MUST include 'UPnP/M.m'. On most servers we can't control this. wdtv and
 xbmc at least doesn't care
+
+##Tested & verified ok with
+* WDTV live
+* PS3
+* XBMC/Kodi 13.3, 15.2
