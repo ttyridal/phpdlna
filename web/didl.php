@@ -60,10 +60,6 @@ class DIDLitem {
         $optattr = array_merge(array('protocolInfo'=>'*:*:*:*'), $optattr);
         $ndRes = $this->node->ownerDocument->createElement('res');
         $ndRes->setAttribute('protocolInfo', $optattr['protocolInfo']);
-//         $ndRes->setAttribute('protocolInfo', 'http-get:*:audio/mpeg:*');
-//         $ndRes->setAttribute('protocolInfo', '*:*:video/x-matroska:*');
-        //   http-get:*:video/x-matroska:DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=20000000000000000000000000000000
-
         if (array_key_exists('filesize', $optattr)) $ndRes->setAttribute('size', $optattr['filesize']);
         if (array_key_exists('duration', $optattr)) $ndRes->setAttribute('duration', $optattr['duration']);
         if (array_key_exists('bitrate', $optattr)) $ndRes->setAttribute('bitrate', $optattr['bitrate']);
@@ -83,7 +79,11 @@ class DIDL {
     protected $didlroot=NULL;
     public $parent_id=NULL;
     public $count=0;
-    const ROOT_ID = '-1';
+    const ROOT_ID = '0';
+    const ROOT_PARENT_ID = '-1';
+    const ITEM_CLASS_VIDEO = 'object.item.videoItem';
+    const ITEM_CLASS_AUDIO = 'object.item.audioItem';
+    const ITEM_CLASS_IMAGE = 'object.item.imageItem';
     function __construct($parent_id) {
         $this->didldoc = new DOMDocument('1.0', 'utf-8');
         $this->didldoc->formatOutput = true;
@@ -96,6 +96,13 @@ class DIDL {
 
         $this->parent_id = $parent_id;
     }
+
+    public static function class_from_mime($ct) {
+        if (substr($ct, 0, 6) === 'video/') return DIDL::ITEM_CLASS_VIDEO;
+        if (substr($ct, 0, 6) === 'audio/') return DIDL::ITEM_CLASS_AUDIO;
+        return null;
+    }
+
     function addFolder($title, $id) {
         $ndItem = $this->didldoc->createElement('container');
         $ndItem->setAttribute('id', $id);
@@ -108,8 +115,7 @@ class DIDL {
         $this->count++;
         return new DIDLitem($ndItem);
     }
-    protected function addItem($title, $id=null) {
-        if ($id === null) $id = md5($this->parent_id . $title);
+    function addItem($class, $title, $id) {
         $ndItem = $this->didldoc->createElement('item');
         $ndItem->setAttribute('id', $id);
         $ndItem->setAttribute('parentID', $this->parent_id);
@@ -117,16 +123,7 @@ class DIDL {
         addNodeWithText($ndItem, 'dc:title', $title);
         $this->didlroot->appendChild($ndItem);
         $this->count++;
-        return $ndItem;
-    }
-    function addSong($title, $id=null) {
-        $ndItem = $this->addItem($title, $id);
-        addNodeWithText($ndItem, 'upnp:class', 'object.item.audioItem');
-        return new DIDLitem($ndItem);
-    }
-    function addVideo($title, $id=null) {
-        $ndItem = $this->addItem($title, $id);
-        addNodeWithText($ndItem, 'upnp:class', 'object.item.videoItem');
+        addNodeWithText($ndItem, 'upnp:class', $class);
         return new DIDLitem($ndItem);
     }
     function slice($startidx, $cnt=-1) {

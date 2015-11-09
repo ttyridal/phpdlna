@@ -37,9 +37,30 @@ function _debug($someText, $someVar = null) {
     fclose($fh);
 }
 
-function demangle_fname($fname)
-{
-    return str_replace(array('.','_'),' ', $fname);
+function get_media_title($path) {
+    return str_replace(array('.','_'),' ', pathinfo($path, PATHINFO_FILENAME));
+}
+
+function get_media_icon($path) {
+    $dir = pathinfo($path, PATHINFO_DIRNAME).'/';
+    $fname = pathinfo($path, PATHINFO_FILENAME);
+    if (file_exists($dir.$fname.'.png')) return $fname.'.png';
+    if (file_exists($dir.$fname.'.jpg')) return $fname.'.jpg';
+    foreach (array('folder.png','folder.jpg','album.png','album.jpg') as $icon)
+        if (file_exists($dir.$fname.'/'.$icon)) return $fname.'/'.$icon;
+    return null;
+}
+
+function get_dlna_profile($path) {
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $ct = finfo_file($finfo, $path);
+    switch ($ct) {
+        case 'image/png': $profile = 'DLNA.ORG_PN=PNG_TN'; break;
+        case 'image/jpeg': $profile = 'DLNA.ORG_PN=JPEG_TN'; break;
+        default: $profile = '*';
+    }
+    finfo_close($finfo);
+    return $profile;
 }
 
 function sorted_filelist($path, $withfiles)
@@ -104,23 +125,22 @@ class ContentDirectory {
         //TODO: implement :)
         //TODO: Consider $req->StartingIndex and $req->RequestedCount
         _debug("Called unimplemented meth Search");
-        $items = new DIDL(DIDL::ROOT_ID);
+        $items = new DIDL(DIDL::ROOT_PARENT_ID);
         return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$items->count, 'UpdateID'=>$this->SystemUpdateID);
     }
-    function BrowseMetadata($req)
+
+    protected function BrowseMetadata($req)
     {
         _debug("Metadata of ".$req->ObjectID);
 
         //TODO (maybe): Consider $req->Filter
 
-        if ($req->ObjectID == '0') {
-            $items = new DIDL(DIDL::ROOT_ID);
+        if ($req->ObjectID == DIDL::ROOT_ID) {
+            $items = new DIDL(DIDL::ROOT_PARENT_ID);
 
-            $items->addFolder("root", '0')
-                ->searchclass("object.item.audioItem")
-                ->searchclass("object.item.videoItem")
-                ->searchclass("object.item.imageItem")
-                ;
+            $items->addFolder('root', $req->ObjectID)
+                ->searchclass(DIDL::ITEM_CLASS_AUDIO)
+                ->searchclass(DIDL::ITEM_CLASS_VIDEO);
         } else {
             try {
                 list($path, $webpath) = $this->lookup_real_path($req->ObjectID);
@@ -130,40 +150,36 @@ class ContentDirectory {
             _debug("metadata for ".$path." : ".$webpath);
 
             if (substr_count($req->ObjectID, '.') == 0)
-                $items = new DIDL('0');
+                $pid = DIDL::ROOT_ID;
             else {
                 if (is_dir($path))
                     $pid = implode('.', array_slice(explode('.', $req->ObjectID), 0, -1));
                 else
                     $pid = explode('$', $req->ObjectID)[0];
-                $items = new DIDL($pid);
             }
-            $fname = demangle_fname(pathinfo($path, PATHINFO_FILENAME));
+            $items = new DIDL($pid);
+
             if (is_dir($path))
-                $items->addFolder($fname, $req->ObjectID);
+                $items->addFolder(get_media_title($path), $req->ObjectID);
             else {
                 $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                $res_opts = array('filesize'=>filesize($path));
                 $ct = finfo_file($finfo, $path);
-                $fname = pathinfo($path, PATHINFO_FILENAME);
-                if (substr($ct, 0, 6) === 'video/') {
-                    $itm = $items->addVideo(demangle_fname($fname), $req->ObjectID);
-                    $res_opts['protocolInfo'] = 'http-get:*:'.$ct.':*';
-                } else if (substr($ct, 0, 6) === 'audio/') {
-                    $itm = $items->addSong(demangle_fname($fname), $req->ObjectID);
-                    $res_opts['protocolInfo'] = 'http-get:*:'.$ct.':*';
-                } else
+                $cls = DIDL::class_from_mime($ct);
+                if (!$cls)
                     return array('illegal');
-                $itm->resource($webpath, $res_opts);
+
+                $itm = $items->addItem($cls, get_media_title($path), $req->ObjectID);
+                $itm->resource($webpath, array(
+                    'filesize' =>filesize($path),
+                    'protocolInfo' => 'http-get:*:'.$ct.':*'
+                ));
                 finfo_close($finfo);
             }
         }
-        $totalMatches=$items->count;
-        $items = $items->slice($req->StartingIndex, $req->RequestedCount);
-        return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$totalMatches, 'UpdateID'=>$this->SystemUpdateID);
+        return array('Result'=>$items->getXML(), 'NumberReturned'=>1, 'TotalMatches'=>1, 'UpdateID'=>$this->SystemUpdateID);
     }
 
-    function BrowseDirectChildren($req)
+    protected function BrowseDirectChildren($req)
     {
         _debug("Direct children of ".$req->ObjectID);
 
@@ -172,7 +188,7 @@ class ContentDirectory {
         $folderid = 0;
         $fileid = 0;
 
-        if ($req->ObjectID == '0') { //ROOT
+        if ($req->ObjectID == DIDL::ROOT_ID) {
             foreach (Config::$folders as $folder) {
                 $items->addFolder(basename($folder['webpath']), sprintf("%d", ++$folderid))
                 ->creator('Creator')
@@ -198,12 +214,11 @@ class ContentDirectory {
             list($folders, $files) = sorted_filelist($path, true);
 
             foreach ($folders as $f) {
-                $itm = $items->addFolder($f, sprintf('%s.%d', $req->ObjectID, ++$folderid));
-                foreach (array('folder.png','folder.jpg','album.png','album.jpg') as $icon) {
-                    if (file_exists($path.$f.'/'.$icon)) {
-                        $itm->icon($webpath.$f."/".$icon);
-                        break;
-                    }
+                $itm = $items->addFolder(get_media_title($path.$f), sprintf('%s.%d', $req->ObjectID, ++$folderid));
+                $icon = get_media_icon($path.$f);
+                if($icon) {
+//                     $itm->resource($webpath.$icon, array('protocolInfo'=>'http-get:*:'.$ct.':'.get_dlna_profile($path.$icon)));
+                    $itm->icon($webpath.$icon);
                 }
             }
 
@@ -212,50 +227,19 @@ class ContentDirectory {
             {
                 ++$fileid;
                 $ct = finfo_file($finfo, $path.$f);
-                $res_opts = array('filesize'=>filesize($path.$f));
+                $cls = DIDL::class_from_mime($ct);
+                if (!$cls) continue;
 
-                $fname = pathinfo($f, PATHINFO_FILENAME);
-                if (substr($ct, 0, 6) === 'video/') {
-                    $itm = $items->addVideo(demangle_fname($fname), sprintf('%s$%d', $req->ObjectID, $fileid));
-                    $res_opts['protocolInfo'] = 'http-get:*:'.$ct.':*';
-                } else if (substr($ct, 0, 6) === 'audio/') {
-                    $itm = $items->addSong(demangle_fname($fname), sprintf('%s$%d', $req->ObjectID, $fileid));
-                    $res_opts['protocolInfo'] = 'http-get:*:'.$ct.':*';
-                } else
-                    continue;
-                $itm->resource($webpath.$f, $res_opts)
-                    //->creator('Creator')
-                    //->genre('Genre')
-                    //->artist('Artist')
-                    //->artist('PerformingArtist', 'Performer')
-                    //->artist('ComposerArtist', 'Composer')
-                    //->artist('AlbumArtist', 'AlbumArtist')
-                    //->author('Author')
-                    //->album('Album')
-                    //->date('2014-01-01')
-                    //->actor('Actor')
-                    //->director('Director')
-                    //->album('AlbumName')
-                    //->track('1')
-                    //->longDescription("the long description")
-                    //->description("short description")
-                    //->language("English")
-                    ;
-                if (file_exists($path.$fname.'.png')) {
-                    $itm->resource($webpath.$fname.'.png', array('protocolInfo'=>'http-get:*:image/png:DLNA.ORG_PN=PNG_TN'));
-                    $itm->icon($webpath.$fname.'.png');
-                }
-                else if (file_exists($path.$fname.'.jpg')) {
-                    $itm->resource($webpath.$fname.'.jpg', array('protocolInfo'=>'http-get:*:image/jpeg:DLNA.ORG_PN=JPEG_TN'));
-                    $itm->icon($webpath.$fname.'.jpg');
-                }
-                else {
-                    foreach (array('folder.png','folder.jpg','album.png','album.jpg') as $icon) {
-                        if (file_exists($path.$icon)) {
-                            $itm->icon($webpath.$icon);
-                            break;
-                        }
-                    }
+                $itm = $items->addItem($cls, get_media_title($path.$f), sprintf('%s$%d', $req->ObjectID, $fileid));
+                $itm->resource($webpath.$f, array(
+                    'filesize' =>filesize($path.$f),
+                    'protocolInfo' => 'http-get:*:'.$ct.':*'
+                ));
+
+                $icon = get_media_icon($path.$f);
+                if($icon) {
+                    $itm->resource($webpath.$icon, array('protocolInfo'=>'http-get:*:'.$ct.':'.get_dlna_profile($path.$icon)));
+                    $itm->icon($webpath.$icon);
                 }
             }
             finfo_close($finfo);
