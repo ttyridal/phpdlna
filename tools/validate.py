@@ -174,7 +174,6 @@ def _soap_upnp_browse(url, objectid, flag=None):
                     CD.SortCriteria(),
                 ),
                 url, UPNP_CD_NS+u'#Browse')
-        print(etree.tostring(l, pretty_print=True))
     else:
         l = _soap_request(
                 CD.Browse(
@@ -187,8 +186,8 @@ def _soap_upnp_browse(url, objectid, flag=None):
                 ),
                 url, UPNP_CD_NS+u'#Browse')
 
-        l = l.xpath('//cd:BrowseResponse/Result/text()', namespaces={u'cd':UPNP_CD_NS})[0]
-        return etree.fromstring(l)
+    l = l.xpath('//cd:BrowseResponse/Result/text()', namespaces={u'cd':UPNP_CD_NS})[0]
+    return etree.fromstring(l)
 
 
 def _find_playable_item(ctrlurl, didl_root):
@@ -202,14 +201,15 @@ def _find_playable_item(ctrlurl, didl_root):
         if not c:
             print(ansicolor_yellow("Warning, unable to find a downloadable item (path:/%s)"%('/'.join(path))))
             print(ansicolor_yellow("browse_server test can not verify file access"))
-            return (None, None)
+            return (None, None, None)
         c=c[0]
         didl = _soap_upnp_browse(ctrlurl, c.attrib['id'])
         path.append(c.xpath('//dc:title/text()',namespaces=NS)[0])
     c = didl.xpath('//didl:item[1]', namespaces=NS)[0]
     path.append(c.xpath('//dc:title/text()',namespaces=NS)[0])
     url = c.xpath('//didl:res/text()',namespaces=NS)[0]
-    return path, url
+    itemid = didl.xpath('//didl:item[1]/@id', namespaces=NS)[0]
+    return path, url, itemid
 
 
 def test_http_HEAD(url):
@@ -250,9 +250,12 @@ def browse_server(ctrlurl):
     NS = {u'didl':u'urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/',
           u'dc':u'http://purl.org/dc/elements/1.1/' }
 
-    try: _soap_upnp_browse(ctrlurl, '0', 'BrowseMetadata')
+    try: didl = _soap_upnp_browse(ctrlurl, '0', 'BrowseMetadata')
     except Exception as e:
         print("upnp browse request failed: %s"%str(e))
+        return -1
+    if didl.xpath('//dc:title/text()',namespaces=NS)[0] != 'root':
+        print("assert failed didl for BrowseMetadata")
         return -1
 
     try: didl = _soap_upnp_browse(ctrlurl, '0')
@@ -262,10 +265,19 @@ def browse_server(ctrlurl):
 
     print("server toplevel folders: ",didl.xpath('//dc:title/text()',namespaces=NS))
 
-    path, url = _find_playable_item(ctrlurl, didl)
+    # browse to an item we can test-download
+
+    path, url, itemid = _find_playable_item(ctrlurl, didl)
     if path is None: return -1
 
-    # browse to an item we can test-download
+    try: didl = _soap_upnp_browse(ctrlurl, itemid, 'BrowseMetadata')
+    except Exception as e:
+        print("upnp browse request failed: %s"%str(e))
+        return -1
+    if didl.xpath('//didl:res/text()',namespaces=NS)[0] != url:
+        print("BrowseMetadata non-root-item failed")
+        return -1
+
     print('Trying to fetch /'+("/".join(path)),"\n  @ ",url)
 
     if test_http_HEAD(url):
