@@ -1,11 +1,11 @@
 phpdlna
 =======
 
-UPnP / DLNA server in PHP - use an existing web server as media hub
+UPnP / DLNA server in PHP - use your existing web server as a DLNA media hub
 
 
 Many UPnP / DLNA Media Servers (or Digital Media Server (DMS) in DLNA speach)
-have been written. As far as I have found, they all include web server (and
+have been written. As far as I have found, they all include a web server (and
 soap+xml framework)
 
 If you already have a web server installed, and considering that UPnP is
@@ -23,7 +23,13 @@ Be aware that this is not a polished product that will automatically work out of
 You'll probably need to compile some c-code (or run some python scripts) and change 
 various files.  You'll also need to install and configure the web server Apache 
 (others might work, not tested) - That's kind of the point. If you don't already have
-a webserver, you'll be better of with [PS3 media server](http://www.ps3mediaserver.org/) [ReadyMedia](https://wiki.archlinux.org/index.php/ReadyMedia) or similar 
+a webserver, you'll be better of with [PS3 media server](http://www.ps3mediaserver.org/), [ReadyMedia](https://wiki.archlinux.org/index.php/ReadyMedia) or similar.
+
+## Features
+* Basic UPnP / DLNA media sharing
+* Title & icon supported out-of-box (various other meta data can be added easily)
+* Stateless
+* No database - all media files are read in place
 
 ## Installing
 Copy the files in phpdlna.git/web/* to a convenient location on your web server:
@@ -63,9 +69,10 @@ An example with is provided in config.php_example.
 Additionally it is required that the web server will serve your
 files, as specified.
 
-Further the web server needs to set the correct headers. You may use ```.htaccess```
-files, or configure this in the main Apache config. see htaccess_example for details
-- and your favourite search engine, on how to configure Apache.
+Further the web server needs to set the correct content-type headers for 
+xml and the media you want to make available.
+You may use ```.htaccess``` files, or configure this in your global server
+configuration. 
 
 After testing that you can actually access your media files with a browser, curl or
 similar, say a few prayers and test from your renderer (WDTV, xbmc or others?)..
@@ -120,40 +127,33 @@ location ~ /phpdlna/.*\.php$ {
 
 
 ##Misc
+* Why?
+  - Scratch that itch
+  - Reduce the amount of server software to keep up to date.
 
-Why?
-* Scratch that itch
-* Reduce the amount of server software to keep up to date.
+* Transcoding
 
-Features:
-Basic DLNA-DMS / UPnP MediaServer file system serving
-TODO: search/sort would be nice
-
-Transcoding:
-Transcoding is currently not implemented. It should be fairly easy to
+  Transcoding is currently not implemented. It should be fairly easy to
 have php-dlna call eg ffmpeg and do transcoding on the fly. It would be
 nice if it could do ConnectionManager request to the player for zero-user-
 interaction format negociation.
 
-
-annonce.cpp vs announce.py - UDP broadcast client:
-They do exactly the same thing. One can be compiled and run without
+* annonce.cpp vs announce.py
+ 
+  They do exactly the same thing. One can be compiled and run without
 dependencies.
 
-##Technical notes
-* UDP discovery cache-control:
-Some renderers will simply stop playing and disconnect if a notify is not
-received when the time expires.
+* UDP discovery cache-control
+
+  Some renderers will simply stop playing and disconnect if a notify is not received when the time expires.
 
 * Same source ip
-Some renderers (notably wdtv live) will not accept that the web server
-and udp-broadcast lives on different addresses (location has to point
-to the same ip as the notify / m-search reply is sent from)
+
+  Some renderers (notably wdtv live) will not accept that the web server and udp-broadcast lives on different addresses (location has to point to the same ip as the notify / m-search reply is sent from)
 
 * Server strings
-Are specified in http://upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.1.pdf to
-"MUST include 'UPnP/M.m'. On most servers we can't control this. wdtv and
-xbmc at least doesn't care
+
+  Are specified in http://upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.1.pdf to "MUST include 'UPnP/M.m'. On most servers we can't control this. It seems most renderers don't care.
 
 ##Tested & verified ok with
 * WDTV live
