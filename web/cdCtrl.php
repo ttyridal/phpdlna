@@ -55,6 +55,13 @@ function get_media_icon($path) {
     return null;
 }
 
+function get_media_srt($path) {
+    $dir = pathinfo($path, PATHINFO_DIRNAME).'/';
+    $fname = pathinfo($path, PATHINFO_FILENAME);
+    if (file_exists($dir.$fname.'.srt')) return $fname.'.srt';
+    return null;
+}
+
 function get_dlna_profile($path) {
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $ct = finfo_file($finfo, $path);
@@ -177,6 +184,10 @@ class ContentDirectory {
                     'filesize' =>filesize($path),
                     'protocolInfo' => 'http-get:*:'.$ct.':*'
                 ));
+                $srt = get_media_srt($path.$f);
+                if ($srt) {
+                    $itm->resource($webpath.$srt, array('protocolInfo'=>'http-get:*:text/srt:*'));
+                }
                 finfo_close($finfo);
             }
         }
@@ -244,6 +255,10 @@ class ContentDirectory {
                 if($icon) {
                     $itm->resource($webpath.$icon, array('protocolInfo'=>'http-get:*:'.$ct.':'.get_dlna_profile($path.$icon)));
                     $itm->icon($webpath.$icon);
+                }
+                $srt = get_media_srt($path.$f);
+                if ($srt) {
+                    $itm->resource($webpath.$srt, array('protocolInfo'=>'http-get:*:text/srt:*'));
                 }
             }
             finfo_close($finfo);
