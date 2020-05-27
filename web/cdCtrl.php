@@ -107,7 +107,7 @@ class ContentDirectory {
             $folders = sorted_filelist($path, false);
             if ($key > count($folders)) throw new InvalidInputException();
             $path.=$folders[$key-1].'/';
-            $webpath.=$folders[$key-1].'/';
+            $webpath.= rawurlencode($folders[$key-1]).'/';
         }
 
         if ($fileid !== null) {
@@ -115,7 +115,7 @@ class ContentDirectory {
             $fileid = intval($fileid);
             if ($fileid < 1 || $fileid > count($files)) throw new InvalidInputException();
             $path .= $files[$fileid - 1];
-            $webpath .= $files[$fileid -1];
+            $webpath .= rawurlencode($files[$fileid -1]);
         }
 
         return array($path, $webpath);
