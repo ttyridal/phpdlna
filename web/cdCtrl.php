@@ -38,7 +38,11 @@ function _debug($someText, $someVar = null) {
 }
 
 function get_media_title($path) {
-    return str_replace(array('.','_'),' ', pathinfo($path, PATHINFO_FILENAME));
+    if (! is_dir($path)) {
+		return str_replace(array('.','_'),' ', pathinfo($path, PATHINFO_FILENAME));
+	} else {
+		return str_replace(array('.','_'),' ', pathinfo($path, PATHINFO_BASENAME));
+	}
 }
 
 function get_media_icon($path) {
