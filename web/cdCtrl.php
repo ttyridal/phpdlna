@@ -246,7 +246,7 @@ class ContentDirectory {
                 if (!$cls) continue;
 
                 $itm = $items->addItem($cls, get_media_title($path.$f), sprintf('%s$%d', $req->ObjectID, $fileid));
-                $itm->resource($webpath.rawurlencode($f) array(
+                $itm->resource($webpath.rawurlencode($f), array(
                     'filesize' =>filesize($path.$f),
                     'protocolInfo' => 'http-get:*:'.$ct.':*'
                 ));
