@@ -134,7 +134,14 @@ def _soap_request(req, url, action):
                               'content-type': 'text/xml; charset="utf-8"'})
     sr.attrib['{{{pre}}}encodingStyle'.format(pre=SOAPENV_NS)] = 'http://schemas.xmlsoap.org/soap/encoding/'
     l = urlopen(r,etree.tostring(sr,xml_declaration=True, encoding='utf-8')).read()
-    return etree.fromstring(l)
+    try:
+        return etree.fromstring(l)
+    except etree.XMLSyntaxError as e:
+        print("Server returned invalid xml for", action,url,"\n\n")
+        print(l)
+        print("\n\n")
+        raise
+
 
 
 def check_connection_manager(url):
