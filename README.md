@@ -21,7 +21,7 @@ the php script on your existing web server.
 
 Be aware that this is not a polished product that will automatically work out of the box. 
 You'll probably need to compile some c-code (or run some python scripts) and change 
-various files.  You'll also need to install and configure the web server Apache 
+various files.  You'll also need to install and configure the web server Apache or NGINX
 (others might work, not tested) - That's kind of the point. If you don't already have
 a webserver, you'll be better of with [PS3 media server](http://www.ps3mediaserver.org/), [ReadyMedia](https://wiki.archlinux.org/index.php/ReadyMedia) or similar.
 
@@ -126,7 +126,7 @@ location ~ /phpdlna/.*\.php$ {
 ```
 
 
-##Misc
+## Misc
 * Why?
   - Scratch that itch
   - Reduce the amount of server software to keep up to date.
@@ -136,7 +136,7 @@ location ~ /phpdlna/.*\.php$ {
   Transcoding is currently not implemented. It should be fairly easy to
 have php-dlna call eg ffmpeg and do transcoding on the fly. It would be
 nice if it could do ConnectionManager request to the player for zero-user-
-interaction format negociation.
+interaction format negotiation.
 
 * annonce.cpp vs announce.py
  
