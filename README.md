@@ -155,7 +155,8 @@ dependencies.
 
   Are specified in http://upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.1.pdf to "MUST include 'UPnP/M.m'. On most servers we can't control this. It seems most renderers don't care.
 
-##Tested & verified ok with
+## Tested & verified ok with
 * WDTV live
 * PS3
 * XBMC/Kodi 13.3, 15.2
+* VLC 3.0.11
