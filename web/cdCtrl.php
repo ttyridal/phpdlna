@@ -264,7 +264,9 @@ class ContentDirectory {
             finfo_close($finfo);
         }
         $totalMatches=$items->count;
-        $items = $items->slice($req->StartingIndex, $req->RequestedCount);
+        if ($req->RequestedCount === 0) {}
+        else
+            $items = $items->slice($req->StartingIndex, $req->RequestedCount);
         return array('Result'=>$items->getXML(), 'NumberReturned'=>$items->count, 'TotalMatches'=>$totalMatches, 'UpdateID'=>$this->SystemUpdateID);
     }
 
