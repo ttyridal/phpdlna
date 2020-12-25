@@ -337,6 +337,10 @@ $soapXml = str_replace('<SOAP-ENV:Envelope', '<SOAP-ENV:Envelope SOAP-ENV:encodi
 // A lot of renderers are particularly picky about the xml (ps3, many more)
 $soapXml = move_namespace_to_first_user($soapXml);
 
+// trim some namespaces to very specific names .. samsung tv's seems to require this (at least '2020 q60t)
+$soapXml = preg_replace('/(?<= |<|<\/|xmlns:)SOAP-ENV(?=:|=)/', 's', $soapXml);
+$soapXml = preg_replace('/(?<= |<|<\/|xmlns:)ns1(?=:|=)/', 'u', $soapXml);
+
 $length = strlen($soapXml);
 header("Content-Length: ".$length);
 echo $soapXml;
