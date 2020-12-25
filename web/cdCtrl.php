@@ -342,6 +342,8 @@ $soapXml = preg_replace('/(?<= |<|<\/|xmlns:)SOAP-ENV(?=:|=)/', 's', $soapXml);
 $soapXml = preg_replace('/(?<= |<|<\/|xmlns:)ns1(?=:|=)/', 'u', $soapXml);
 
 $length = strlen($soapXml);
+header("Server: UPnP/1.0 DLNADOC/1.50 phpdlna/1.0");
 header("Content-Length: ".$length);
+header('Content-Type: text/xml; charset="utf-8"');
 echo $soapXml;
 ?>
